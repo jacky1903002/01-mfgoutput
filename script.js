@@ -232,7 +232,7 @@ document.getElementById('upload-excel').addEventListener('change', function(e) {
         }
       } else {
         const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
-        parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h.trim() }));
+        parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h }));
         parsedData = rawJson;
       }
 
@@ -256,7 +256,7 @@ document.getElementById('upload-excel').addEventListener('change', function(e) {
   reader.readAsArrayBuffer(file);
 });
 
-// --- UI 渲染與事件綁定 ---
+// --- UI 渲染與事件綁定 (掛載到 window) ---
 window.renderLogo = function() {
   const logoBox = document.getElementById('logo-box');
   if (!logoBox) return;
@@ -558,15 +558,12 @@ const yearSeparatorPlugin = {
   }
 };
 
-// 強化版數值解析：支援逗號、字元過濾、百分比自動換算
 function parseNum(val, isPercentageHint = false) {
   if (val === undefined || val === null || val === "-" || val === "") return 0;
   
-  let str = String(val).trim();
+  let str = String(val).trim().replace(/,/g, '').replace(/NT\$/gi, '').replace(/\$/g, '');
   let hasPercentSign = str.includes('%');
-
-  // 只保留數字、小數點與負號
-  str = str.replace(/[^0-9.-]/g, '');
+  str = str.replace(/%/g, '');
   
   let num = parseFloat(str);
   if (isNaN(num)) return 0;
@@ -580,20 +577,9 @@ function parseNum(val, isPercentageHint = false) {
   return num;
 }
 
-// 強化版欄位標題比對（忽視大小寫、全半形與非字元比對）
 function getColumnKeyByTitle(sheet, targetTitle) {
-  if (!sheet || !sheet.columns) return null;
-
-  // 1. 完全精確比對 key 或 title
-  let found = sheet.columns.find(c => c.key === targetTitle || c.title.trim() === targetTitle.trim());
-  if (found) return found.key;
-
-  // 2. 模糊去除符號與空白後比對
-  const normalize = (str) => String(str).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "").toLowerCase();
-  const cleanTarget = normalize(targetTitle);
-
-  found = sheet.columns.find(c => normalize(c.title).includes(cleanTarget) || cleanTarget.includes(normalize(c.title)));
-  return found ? found.key : null;
+  const col = (sheet.columns || []).find(c => c.title.trim() === targetTitle.trim() || c.title.includes(targetTitle));
+  return col ? col.key : null;
 }
 
 function buildChartSheet1(config, sheet) {
@@ -604,8 +590,7 @@ function buildChartSheet1(config, sheet) {
     window.chartInstances[config.id].destroy();
   }
 
-  const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-  const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
+  const labels = sheet.data.map(r => r.month || '');
 
   if (config.type === "combo") {
     const valKey = getColumnKeyByTitle(sheet, "合計產出市值");
@@ -707,8 +692,7 @@ function buildChartSheet2(config, sheet) {
     window.chartInstances[config.id].destroy();
   }
 
-  const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-  const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
+  const labels = sheet.data.map(r => r.month || '');
 
   if (config.type === "combo_bar_line") {
     const barKey = getColumnKeyByTitle(sheet, config.barKey);
