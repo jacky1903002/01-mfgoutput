@@ -535,8 +535,10 @@
       }
 
       const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
-      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
-      const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客戶累積產值");
+const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
+// 修正第三個工作頁的判斷條件，讓名稱「複材占比」也能對應圖表
+const isThirdSheet = (currentSheet.id === "s3" || currentSheet.name === "複材占比" || currentSheet.name === "植村占比");
+const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客戶累積產值");
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `<div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 分析圖表</div><div class="charts-grid">`;
