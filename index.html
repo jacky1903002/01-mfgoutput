@@ -393,7 +393,6 @@
     window.logoUrl = "";
     window.chartInstances = {};
 
-    // 第一個工作表圖表配置
     window.sheet1ChartConfigs = [
       { id: "s1_chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
       { id: "s1_chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
@@ -401,7 +400,6 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 第二個工作表（刀具費佔成本）專屬 6 個圖表配置（將房廂組更正為鎢鉬鉭）
     window.sheet2ChartConfigs = [
       { id: "s2_chart_1", title: "鎢鉬鉭刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "鎢鉬鉭刀具費", lineKey: "鎢鉬鉭刀具費/成本" },
       { id: "s2_chart_2", title: "鎢鉬鉭刀具費與成本趨勢圖", type: "double_line", line1Key: "鎢鉬鉭刀具費", line2Key: "鎢鉬鉭產品成本" },
@@ -689,6 +687,7 @@
       if (curSheet && curSheet.data[rowIndex]) {
         curSheet.data[rowIndex][colKey] = value.trim();
         if (window.saveToFirebase) window.saveToFirebase();
+        renderMainContent();
       }
     }
 
@@ -759,7 +758,7 @@
       } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `
           <div class="charts-section-title">
-            <i class="fa-solid fa-chart-pie"></i> 第二個工作頁新增以下六個圖表分析
+            <i class="fa-solid fa-chart-pie"></i> 第二個工作頁圖表分析 (資料來源：${currentSheet.name})
           </div>
           <div class="charts-grid-2col">
         `;
@@ -796,7 +795,6 @@
       }
     }
 
-    // 跨年份黑色垂直分隔線 Plugin
     const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
@@ -844,7 +842,7 @@
       const dataSheet = currentSheet.data;
       if (!dataSheet || dataSheet.length === 0) return;
 
-      const labels = dataSheet.map(r => r.month || "");
+      const labels = dataSheet.map(r => r.month || r["月份/時間"] || "");
 
       if (chartInstances[chartConfig.id]) {
         chartInstances[chartConfig.id].destroy();
@@ -903,7 +901,6 @@
       }
     }
 
-    // 第二個工作頁（6 個圖表）繪製邏輯
     function buildChartSheet2(chartConfig, currentSheet) {
       const canvas = document.getElementById(`canvas-${chartConfig.id}`);
       if (!canvas) return;
@@ -911,7 +908,7 @@
       const dataSheet = currentSheet.data;
       if (!dataSheet || dataSheet.length === 0) return;
 
-      const labels = dataSheet.map(r => r.month || "");
+      const labels = dataSheet.map(r => r.month || r["月份/時間"] || "");
 
       if (chartInstances[chartConfig.id]) {
         chartInstances[chartConfig.id].destroy();
@@ -928,7 +925,7 @@
           data: {
             labels: labels,
             datasets: [
-              { label: chartConfig.barKey, data: barVals, backgroundColor: 'rgba(100, 116, 139, 0.7)', borderColor: '#64748b', borderWidth: 1, yAxisID: 'y' },
+              { label: chartConfig.barKey, data: barVals, backgroundColor: 'rgba(2, 132, 199, 0.7)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
               { label: chartConfig.lineKey, data: lineVals, type: 'line', borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 3, yAxisID: 'y1' }
             ]
           },
@@ -936,7 +933,7 @@
             responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
-              y: { type: 'linear', position: 'left', ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+              y: { type: 'linear', position: 'left', ticks: { color: '#0284c7', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
               y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#b91c1c', font: { size: 10 }, callback: v => v + '%' } }
             },
             plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
@@ -971,17 +968,42 @@
       }
     }
 
+    // 全方位修復欄位尋找與比對 logic
     function findValByTitle(sheet, row, keyKeyword) {
+      if (!sheet || !row) return 0;
+
+      // 1. 直接比對 row 物件的鍵 (key / header)
+      if (row[keyKeyword] !== undefined) return row[keyKeyword];
+
       const sheetCols = sheet.columns || [];
-      const targetCol = sheetCols.find(c => c.title.includes(keyKeyword));
-      return targetCol ? row[targetCol.key] : 0;
+      
+      // 2. 透過 title 模糊比對
+      const targetColByTitle = sheetCols.find(c => c.title && c.title.trim().includes(keyKeyword.trim()));
+      if (targetColByTitle && row[targetColByTitle.key] !== undefined) {
+        return row[targetColByTitle.key];
+      }
+
+      // 3. 備用：若找不到，檢查所有欄位內是否有相似關鍵字
+      for (let k in row) {
+        if (k.includes(keyKeyword)) return row[k];
+      }
+
+      return 0;
     }
 
+    // 全方位數值清理與轉譯，可處理 %、NT$、千分號等情況
     function parseNum(val) {
-      if (!val) return 0;
-      let str = String(val).replace(/,/g, '').replace(/NT\$/g, '').replace(/%/g, '').trim();
+      if (val === undefined || val === null || val === "-") return 0;
+      let str = String(val).replace(/,/g, '').replace(/NT\$/g, '').replace(/\$/g, '').trim();
+      
+      // 若為百分比格式 (例如 15.5%)
+      let isPercent = str.includes('%');
+      str = str.replace(/%/g, '');
+      
       let num = parseFloat(str);
-      return isNaN(num) ? 0 : num;
+      if (isNaN(num)) return 0;
+
+      return isPercent ? num : num;
     }
 
     function exportChartToPNG(chartId, title) {
