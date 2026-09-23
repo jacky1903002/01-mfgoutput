@@ -318,7 +318,25 @@
       }
     };
 
+    let isDataLoaded = false;
+
+    // 設定 3 秒逾時防護：若 Firebase 未回應則強制以預設資料渲染
+    const connectionTimeout = setTimeout(() => {
+      if (!isDataLoaded) {
+        const statusEl = document.getElementById('firebase-status');
+        if (statusEl) {
+          statusEl.className = 'status-badge read-only';
+          statusEl.innerText = '● 本地離線模式 (Firebase 連線逾時)';
+        }
+        window.renderTabs();
+        window.renderMainContent();
+      }
+    }, 3000);
+
     onSnapshot(docRef, (docSnap) => {
+      isDataLoaded = true;
+      clearTimeout(connectionTimeout);
+
       const statusEl = document.getElementById('firebase-status');
       if (statusEl) { 
         statusEl.className = window.currentUser ? 'status-badge success' : 'status-badge read-only'; 
@@ -341,8 +359,18 @@
       }
       window.renderTabs();
       window.renderMainContent();
+    }, (error) => {
+      // 捕捉連線錯誤
+      console.error("Firebase 監聽錯誤:", error);
+      clearTimeout(connectionTimeout);
+      const statusEl = document.getElementById('firebase-status');
+      if (statusEl) {
+        statusEl.className = 'status-badge read-only';
+        statusEl.innerText = '● 離線模式 (連線被阻擋或失敗)';
+      }
+      window.renderTabs();
+      window.renderMainContent();
     });
-
     // 匯出 Excel 功能
     window.exportCurrentSheetExcel = function() {
       const currentSheet = window.sheets.find(s => s.id === window.activeSheetId);
