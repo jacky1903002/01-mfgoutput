@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Filament Outsource Tracing - 專案進度追蹤系統</title>
+  <title>MFG Output Analysis - 專案進度追蹤系統</title>
   
   <!-- Font Awesome 圖示庫 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -37,15 +37,21 @@
       align-items: center;
       gap: 12px;
     }
-    .logo-icon {
-      width: 32px;
-      height: 32px;
+    .logo-container {
+      width: 36px;
+      height: 36px;
       background: #0284c7;
       border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
+      overflow: hidden;
+    }
+    .logo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     .badge-enterprise {
       background: #4f46e5;
@@ -65,10 +71,26 @@
     }
     h1.system-title {
       color: #38bdf8;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 800;
       letter-spacing: 0.5px;
     }
+    .url-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 10px;
+    }
+    .url-input-group input {
+      background: #101935;
+      border: 1px solid #1e293b;
+      color: #cbd5e1;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      width: 180px;
+    }
+
     .user-controls {
       display: flex;
       align-items: center;
@@ -117,6 +139,7 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      overflow-x: auto;
     }
     .tab-item {
       background: #151e3d;
@@ -127,13 +150,23 @@
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       border: 1px solid #1e293b;
       border-bottom: none;
+      white-space: nowrap;
     }
     .tab-item.active {
       background: #0284c7;
       color: #fff;
+    }
+    .tab-item .close-tab {
+      font-size: 12px;
+      border-radius: 50%;
+      padding: 0 2px;
+    }
+    .tab-item .close-tab:hover {
+      background: rgba(255,255,255,0.2);
+      color: #ff4d4f;
     }
 
     /* 操作工具列 */
@@ -172,7 +205,7 @@
     }
     table.custom-table th .close-col {
       color: #64748b;
-      margin-left: 4px;
+      margin-left: 6px;
       cursor: pointer;
     }
     table.custom-table th .close-col:hover { color: #ef4444; }
@@ -184,13 +217,15 @@
     table.custom-table tr:hover {
       background-color: #111c3e;
     }
+    /* 拖拽視覺指標 */
+    tr.dragging { opacity: 0.4; }
 
     /* 進度條樣式 */
     .progress-box {
       display: flex;
       align-items: center;
       gap: 8px;
-      width: 120px;
+      width: 110px;
     }
     .progress-bar-bg {
       flex: 1;
@@ -209,27 +244,17 @@
       font-size: 11px;
       color: #38bdf8;
       font-weight: bold;
-      width: 35px;
+      width: 32px;
       text-align: right;
     }
 
-    /* 狀態標籤 */
-    .status-tag {
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-    }
     .status-ongoing { color: #38bdf8; }
     .status-notstart { color: #94a3b8; }
 
-    /* 操作鏈結 */
-    .action-link {
-      color: #64748b;
-      cursor: pointer;
-    }
+    .action-link { color: #64748b; cursor: pointer; }
     .action-link:hover { color: #ef4444; }
 
-    /* Modal 彈窗樣式 */
+    /* Modal */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.7); z-index: 2000;
@@ -246,20 +271,30 @@
 </head>
 <body>
 
-  <!-- 頂部標題列 -->
+  <!-- 頂部 Header 列 -->
   <header>
     <div class="header-title-group">
-      <div class="logo-icon"><i class="fa-solid fa-microchip"></i></div>
+      <!-- 1. 動態 Logo 圖示 -->
+      <div class="logo-container" id="logo-box">
+        <i class="fa-solid fa-chart-line" id="default-logo-icon"></i>
+      </div>
       <div>
         <div style="display:flex; align-items:center; gap:8px;">
           <span class="badge-enterprise">CLOUD ENTERPRISE</span>
           <span class="badge-time">● 最後更新: <span id="update-time">2026/09/23 13:17:58</span></span>
         </div>
-        <h1 class="system-title">Filament Outsource Tracing</h1>
+        <div style="display:flex; align-items:center;">
+          <h1 class="system-title">MFG Output Analysis</h1>
+          <!-- 1. 輸入圖片網址 -->
+          <div class="url-input-group">
+            <input type="text" id="logo-url-input" placeholder="輸入標題 Logo 圖片網址...">
+            <button class="btn btn-dark" style="padding: 3px 8px;" onclick="applyLogoUrl()">套用 Logo</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 使用者驗證資訊 -->
+    <!-- 使用者驗證 -->
     <div class="user-controls">
       <span id="user-info">載入中...</span>
       <button id="btn-login" onclick="openAuthModal()" class="btn">🔑 帳號登入/註冊</button>
@@ -267,19 +302,15 @@
     </div>
   </header>
 
-  <!-- 工作表分頁區 -->
+  <!-- 2. 工作表分頁區 -->
   <div class="nav-tabs-container">
     <div class="project-tag">專案進度追蹤表</div>
-    <div class="sheet-tabs">
-      <div class="tab-item active">工程及製造追蹤項目 <i class="fa-solid fa-xmark"></i></div>
-      <div class="tab-item">採購追蹤項目 <i class="fa-solid fa-xmark"></i></div>
-      <div class="tab-item">品保追蹤項目 <i class="fa-solid fa-xmark"></i></div>
-      <button class="btn btn-dark" style="padding: 4px 8px;">新增工作表</button>
-      <button class="btn btn-dark" style="padding: 4px 8px;">複製工作表</button>
+    <div class="sheet-tabs" id="sheet-tabs-list">
+      <!-- 動態產生工作表分頁 -->
     </div>
   </div>
 
-  <!-- 功能按鈕列 -->
+  <!-- 功能操作工具列 -->
   <div class="action-bar">
     <button class="btn" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列</button>
     <button class="btn" onclick="addColumn()"><i class="fa-solid fa-plus"></i> 新增自訂欄位</button>
@@ -291,33 +322,19 @@
     <button id="btn-save" class="btn btn-dark" onclick="saveToFirebase()" disabled><i class="fa-solid fa-cloud-arrow-up"></i> 雲端儲存</button>
   </div>
 
-  <!-- 主數據表格區塊 -->
+  <!-- 3. 主數據表格區塊（支援欄/列刪除與列拖移） -->
   <div class="table-container">
     <table class="custom-table" id="main-table">
-      <thead>
-        <tr>
-          <th style="width: 30px;">:::</th>
-          <th>品號 <span class="close-col">×</span></th>
-          <th>貨號 <span class="close-col">×</span></th>
-          <th>採購料號 <span class="close-col">×</span></th>
-          <th>圖面進度% <span class="close-col">×</span></th>
-          <th>K料號申請 <span class="close-col">×</span></th>
-          <th>檢具進度 <span class="close-col">×</span></th>
-          <th>開始日期 <span class="close-col">×</span></th>
-          <th>結束日期 <span class="close-col">×</span></th>
-          <th>進度(%) <span class="close-col">×</span></th>
-          <th>狀態 <span class="close-col">×</span></th>
-          <th>備註 <span class="close-col">×</span></th>
-          <th>操作</th>
-        </tr>
+      <thead id="table-head">
+        <!-- 動態繪製欄位 Header -->
       </thead>
       <tbody id="table-body">
-        <!-- 內容將由 JavaScript 自動生成 -->
+        <!-- 動態繪製數據表格 -->
       </tbody>
     </table>
   </div>
 
-  <!-- 登入與註冊 Modal -->
+  <!-- Modal 登入視窗 -->
   <div id="auth-modal" class="modal-overlay">
     <div class="modal-content">
       <h3 id="auth-title" style="text-align:center;">使用者登入</h3>
@@ -331,7 +348,7 @@
     </div>
   </div>
 
-  <!-- Firebase v10 SDK Modules -->
+  <!-- Firebase Modules -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -351,9 +368,7 @@
     const db = getFirestore(app);
 
     let currentUser = null;
-    let isRegisterMode = false;
 
-    // 監聽 Auth 狀態
     onAuthStateChanged(auth, async (user) => {
       currentUser = user;
       const userInfo = document.getElementById('user-info');
@@ -366,9 +381,8 @@
         btnLogin.style.display = 'none';
         btnLogout.style.display = 'inline-block';
         btnSave.disabled = false;
-        await loadFromFirebase();
       } else {
-        userInfo.innerText = 'n1693131@gmail.com'; // 靜態展示預設
+        userInfo.innerText = 'n1693131@gmail.com';
         btnLogin.style.display = 'inline-block';
         btnLogout.style.display = 'none';
         btnSave.disabled = true;
@@ -378,141 +392,262 @@
     window.openAuthModal = () => document.getElementById('auth-modal').style.display = 'flex';
     window.closeAuthModal = () => document.getElementById('auth-modal').style.display = 'none';
 
-    window.toggleAuthMode = () => {
-      isRegisterMode = !isRegisterMode;
-      document.getElementById('auth-title').innerText = isRegisterMode ? '註冊新帳號' : '使用者登入';
-      document.getElementById('auth-submit-btn').innerText = isRegisterMode ? '註冊' : '登入';
-      document.getElementById('auth-toggle-btn').innerText = isRegisterMode ? '已有帳號？按此登入' : '還沒有帳號？按此註冊';
-    };
-
     window.handleAuthSubmit = async () => {
       const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value.trim();
       if (!email || !password) return alert('請輸入完整 Email 與密碼！');
-
       try {
-        if (isRegisterMode) {
-          await createUserWithEmailAndPassword(auth, email, password);
-          alert('註冊成功！');
-        } else {
-          await signInWithEmailAndPassword(auth, email, password);
-          alert('登入成功！');
-        }
+        await signInWithEmailAndPassword(auth, email, password);
         closeAuthModal();
-      } catch (err) {
-        alert('操作失敗：' + err.message);
-      }
+      } catch (err) { alert('操作失敗：' + err.message); }
     };
 
     window.logout = () => signOut(auth);
 
-    // 儲存至雲端 (以使用者 UID 做個人隔離)
     window.saveToFirebase = async () => {
       if (!currentUser) return;
       try {
-        const tableData = getTableData();
         await setDoc(doc(db, "users", currentUser.uid, "sheets", "tracing_data"), {
-          data: JSON.stringify(tableData),
+          sheets: JSON.stringify(sheets),
           updatedAt: new Date().toISOString()
         });
-        alert('☁️ 已成功同步儲存至雲端！');
-      } catch (err) {
-        alert('儲存失敗：' + err.message);
-      }
-    };
-
-    // 從雲端載入
-    window.loadFromFirebase = async () => {
-      if (!currentUser) return;
-      try {
-        const docRef = doc(db, "users", currentUser.uid, "sheets", "tracing_data");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const rawData = JSON.parse(docSnap.data().data);
-          renderTable(rawData);
-        }
-      } catch (err) {
-        console.error('雲端載入錯誤:', err);
-      }
+        alert('☁️ 已成功同步全部分頁至雲端！');
+      } catch (err) { alert('儲存失敗：' + err.message); }
     };
   </script>
 
-  <!-- 數據呈現與介面互動腳本 -->
+  <!-- 核心資料邏輯與介面控制 -->
   <script>
-    // 預設擬真數據（對照圖片內容）
-    const initialData = [
-      { pinNo: "FVSE-0036-4", itemNo: "10091-VWNE000", poNo: "50091-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" },
-      { pinNo: "FVSE-0525-4", itemNo: "10021-VWNE000", poNo: "50021-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" },
-      { pinNo: "FVSE-0032-4", itemNo: "14967-VWNE001", poNo: "54967-0WNG000", drawProgress: 100, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "-" },
-      { pinNo: "FVSE-0068", itemNo: "10014-VWTE000", poNo: "50014-0WTE000", drawProgress: 100, kApp: "NA", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "無須檢具" },
-      { pinNo: "FV80-0433", itemNo: "10207-FWTE000", poNo: "50207-0WTE000", drawProgress: 100, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "-" },
-      { pinNo: "FVSE-0471-6", itemNo: "10024-VWNE000", poNo: "50024-0WNE000", drawProgress: 70, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "待QC逆向!(09/29)" },
-      { pinNo: "FVEX-3030M", itemNo: "14725-FWNE000", poNo: "54725-0WNE000", drawProgress: 100, kApp: "NA", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "無須檢具" },
-      { pinNo: "FV810-0206WU", itemNo: "10247-FWUE000", poNo: "50247-0WUE000", drawProgress: 70, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "待QC逆向!(09/29)" },
-      { pinNo: "-", itemNo: "10031-FWTE001", poNo: "50031-0WTE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "10091-VWEN000檢具共用" },
-      { pinNo: "FVSE-0480-1", itemNo: "13876-VWNE000", poNo: "53876-0WNE000", drawProgress: 0, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "-" }
+    // 預設欄位定義
+    let columns = [
+      { key: "pinNo", title: "品號" },
+      { key: "itemNo", title: "貨號" },
+      { key: "poNo", title: "採購料號" },
+      { key: "drawProgress", title: "圖面進度%", isProgress: true },
+      { key: "kApp", title: "K料號申請" },
+      { key: "checkProgress", title: "檢具進度", isProgress: true },
+      { key: "startDate", title: "開始日期" },
+      { key: "endDate", title: "結束日期" },
+      { key: "progress", title: "進度(%)", isProgress: true },
+      { key: "status", title: "狀態" },
+      { key: "remark", title: "備註" }
     ];
 
-    function renderProgress(val) {
-      return `
-        <div class="progress-box">
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" style="width: ${val}%"></div>
-          </div>
-          <span class="progress-text">${val}%</span>
-        </div>
-      `;
+    // 多工作表資料結構
+    let sheets = [
+      { id: "s1", name: "工程及製造追蹤項目", data: getInitialRows() },
+      { id: "s2", name: "採購追蹤項目", data: getInitialRows().slice(0, 4) },
+      { id: "s3", name: "品保追蹤項目", data: getInitialRows().slice(0, 3) }
+    ];
+    let activeSheetId = "s1";
+
+    function getInitialRows() {
+      return [
+        { pinNo: "FVSE-0036-4", itemNo: "10091-VWNE000", poNo: "50091-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" },
+        { pinNo: "FVSE-0525-4", itemNo: "10021-VWNE000", poNo: "50021-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" },
+        { pinNo: "FVSE-0032-4", itemNo: "14967-VWNE001", poNo: "54967-0WNG000", drawProgress: 100, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "-" },
+        { pinNo: "FVSE-0068", itemNo: "10014-VWTE000", poNo: "50014-0WTE000", drawProgress: 100, kApp: "NA", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "無須檢具" },
+        { pinNo: "FV80-0433", itemNo: "10207-FWTE000", poNo: "50207-0WTE000", drawProgress: 100, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "-" }
+      ];
     }
 
-    function renderTable(data) {
+    // 1. 套用標題 Logo 圖片網址
+    function applyLogoUrl() {
+      const url = document.getElementById('logo-url-input').value.trim();
+      const logoBox = document.getElementById('logo-box');
+      if (url) {
+        logoBox.innerHTML = `<img src="${url}" alt="Logo" onerror="alert('無法讀取該圖片網址，請確認連結！'); this.parentNode.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';">`;
+      } else {
+        logoBox.innerHTML = `<i class="fa-solid fa-chart-line"></i>`;
+      }
+    }
+
+    // 2. 渲染工作表分頁 (Tabs)
+    function renderTabs() {
+      const container = document.getElementById('sheet-tabs-list');
+      let html = '';
+      sheets.forEach(s => {
+        const isActive = s.id === activeSheetId ? 'active' : '';
+        html += `
+          <div class="tab-item ${isActive}" onclick="switchSheet('${s.id}')">
+            ${s.name}
+            <span class="close-tab" onclick="deleteSheet(event, '${s.id}')">×</span>
+          </div>
+        `;
+      });
+      html += `<button class="btn btn-dark" style="padding: 4px 8px;" onclick="addSheet()">新增工作表</button>`;
+      html += `<button class="btn btn-dark" style="padding: 4px 8px;" onclick="copySheet()">複製工作表</button>`;
+      container.innerHTML = html;
+    }
+
+    function switchSheet(id) {
+      activeSheetId = id;
+      renderTabs();
+      renderTable();
+    }
+
+    function addSheet() {
+      const name = prompt("請輸入新工作表名稱：", `工作表 ${sheets.length + 1}`);
+      if (!name) return;
+      const newId = "s_" + Date.now();
+      sheets.push({ id: newId, name: name, data: [] });
+      activeSheetId = newId;
+      renderTabs();
+      renderTable();
+    }
+
+    function copySheet() {
+      const current = sheets.find(s => s.id === activeSheetId);
+      if (!current) return;
+      const newId = "s_" + Date.now();
+      sheets.push({ id: newId, name: `${current.name} (副本)`, data: JSON.parse(JSON.stringify(current.data)) });
+      activeSheetId = newId;
+      renderTabs();
+      renderTable();
+    }
+
+    function deleteSheet(e, id) {
+      e.stopPropagation();
+      if (sheets.length <= 1) return alert("最少需保留一個工作表！");
+      if (confirm("確定要刪除此工作表嗎？")) {
+        sheets = sheets.filter(s => s.id !== id);
+        if (activeSheetId === id) activeSheetId = sheets[0].id;
+        renderTabs();
+        renderTable();
+      }
+    }
+
+    // 3. 渲染與操作數據表格 (包含欄/列刪除與拖移)
+    function renderTable() {
+      const currentSheet = sheets.find(s => s.id === activeSheetId);
+      if (!currentSheet) return;
+
+      // 繪製表頭 Header
+      const thead = document.getElementById('table-head');
+      let headHtml = '<tr><th style="width: 30px;">:::</th>';
+      columns.forEach((col, cIdx) => {
+        headHtml += `
+          <th>
+            ${col.title}
+            <span class="close-col" onclick="deleteColumn(${cIdx})" title="刪除此欄">×</span>
+          </th>`;
+      });
+      headHtml += '<th>操作</th></tr>';
+      thead.innerHTML = headHtml;
+
+      // 繪製資料 Body
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
-      data.forEach((row, idx) => {
+      
+      currentSheet.data.forEach((row, rIdx) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td style="color:#475569;"><i class="fa-solid fa-grip-vertical"></i></td>
-          <td>${row.pinNo}</td>
-          <td>${row.itemNo}</td>
-          <td>${row.poNo}</td>
-          <td>${renderProgress(row.drawProgress)}</td>
-          <td>${row.kApp}</td>
-          <td>${renderProgress(row.checkProgress)}</td>
-          <td>${row.startDate}</td>
-          <td>${row.endDate}</td>
-          <td>${renderProgress(row.progress)}</td>
-          <td><span class="${row.status === '進行中' ? 'status-ongoing' : 'status-notstart'}">${row.status}</span></td>
-          <td>${row.remark}</td>
-          <td><span class="action-link" onclick="deleteRow(${idx})">刪除</span></td>
-        `;
+        tr.draggable = true;
+        tr.dataset.index = rIdx;
+        
+        // 拖拽事件綁定
+        tr.ondragstart = handleDragStart;
+        tr.ondragover = handleDragOver;
+        tr.ondrop = handleDrop;
+        tr.ondragend = handleDragEnd;
+
+        let rowHtml = `<td style="color:#475569; cursor:grab;"><i class="fa-solid fa-grip-vertical"></i></td>`;
+        columns.forEach(col => {
+          const val = row[col.key] !== undefined ? row[col.key] : '-';
+          if (col.isProgress) {
+            rowHtml += `<td>${renderProgress(val)}</td>`;
+          } else if (col.key === 'status') {
+            rowHtml += `<td><span class="${val === '進行中' ? 'status-ongoing' : 'status-notstart'}">${val}</span></td>`;
+          } else {
+            rowHtml += `<td>${val}</td>`;
+          }
+        });
+        rowHtml += `<td><span class="action-link" onclick="deleteRow(${rIdx})">刪除</span></td>`;
+        tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
       });
     }
 
+    function renderProgress(val) {
+      const num = parseInt(val) || 0;
+      return `
+        <div class="progress-box">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: ${num}%"></div>
+          </div>
+          <span class="progress-text">${num}%</span>
+        </div>`;
+    }
+
+    // 欄位操作
+    function addColumn() {
+      const name = prompt("請輸入新自訂欄位名稱：");
+      if (!name) return;
+      const key = "col_" + Date.now();
+      columns.push({ key: key, title: name });
+      renderTable();
+    }
+
+    function deleteColumn(cIdx) {
+      if (confirm(`確定要刪除「${columns[cIdx].title}」欄位嗎？`)) {
+        columns.splice(cIdx, 1);
+        renderTable();
+      }
+    }
+
+    // 列位操作
     function addRow() {
-      const newRow = { pinNo: "NEW-0001", itemNo: "00000-NEW", poNo: "-", drawProgress: 0, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "-" };
-      initialData.push(newRow);
-      renderTable(initialData);
+      const currentSheet = sheets.find(s => s.id === activeSheetId);
+      if (!currentSheet) return;
+      const newRow = { pinNo: "NEW-ITEM", itemNo: "00000", poNo: "-", drawProgress: 0, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 0, status: "未開始", remark: "-" };
+      currentSheet.data.push(newRow);
+      renderTable();
     }
 
-    function deleteRow(idx) {
-      initialData.splice(idx, 1);
-      renderTable(initialData);
+    function deleteRow(rIdx) {
+      const currentSheet = sheets.find(s => s.id === activeSheetId);
+      if (!currentSheet) return;
+      currentSheet.data.splice(rIdx, 1);
+      renderTable();
     }
 
-    function getTableData() {
-      return initialData;
+    // HTML5 拖動排序 (Drag and Drop)
+    let dragSrcIndex = null;
+    function handleDragStart(e) {
+      dragSrcIndex = this.dataset.index;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
     }
-
-    // 初始化渲染
-    renderTable(initialData);
+    function handleDragOver(e) {
+      if (e.preventDefault) e.preventDefault();
+      return false;
+    }
+    function handleDrop(e) {
+      e.stopPropagation();
+      const targetIndex = this.dataset.index;
+      if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+        const currentSheet = sheets.find(s => s.id === activeSheetId);
+        const movedItem = currentSheet.data.splice(dragSrcIndex, 1)[0];
+        currentSheet.data.splice(targetIndex, 0, movedItem);
+        renderTable();
+      }
+      return false;
+    }
+    function handleDragEnd() {
+      this.classList.remove('dragging');
+    }
 
     // 匯出 Excel
     function exportExcel() {
-      const ws = XLSX.utils.json_to_sheet(initialData);
+      const currentSheet = sheets.find(s => s.id === activeSheetId);
+      const ws = XLSX.utils.json_to_sheet(currentSheet.data);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "進度追蹤");
-      XLSX.writeFile(wb, `Outsource_Tracing_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, currentSheet.name);
+      XLSX.writeFile(wb, `${currentSheet.name}_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
+
+    // 初始化頁面
+    renderTabs();
+    renderTable();
   </script>
 </body>
 </html>
