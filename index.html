@@ -71,13 +71,13 @@
       display: flex; flex-direction: column; gap: 8px;
       border-bottom: 1px solid #cbd5e1;
     }
-    .sheet-tabs { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+    .sheet-tabs { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
     
     .tab-item {
-      background: #00a8e8; color: #ffffff; padding: 10px 16px; border-radius: 4px;
-      font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-      border: none; white-space: nowrap; user-select: none; font-weight: bold; width: fit-content;
-      min-width: 160px;
+      background: #00a8e8; color: #ffffff; padding: 8px 14px; border-radius: 4px;
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      border: none; white-space: nowrap; user-select: none; font-weight: bold;
+      min-width: 140px;
     }
     .tab-item.active { background: #0077b6; color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
 
@@ -532,8 +532,8 @@
     function renderLogo() {
       const logoBox = document.getElementById('logo-box');
       if (!logoBox) return;
-      if (logoUrl && logoUrl.trim() !== '') {
-        logoBox.innerHTML = `<img src="${logoUrl}" alt="Logo" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';" />`;
+      if (window.logoUrl && window.logoUrl.trim() !== '') {
+        logoBox.innerHTML = `<img src="${window.logoUrl}" alt="Logo" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';" />`;
       } else {
         logoBox.innerHTML = `<i class="fa-solid fa-chart-line" id="logo-icon"></i>`;
       }
@@ -541,9 +541,9 @@
 
     function changeLogoUrl() {
       if (!window.currentUser) return alert('請登入管理員帳號後再更換 Logo！');
-      const inputUrl = prompt("請輸入 Logo 圖示的圖片網址 (URL)：\n(清空則回復為預設圖示)", logoUrl || "");
+      const inputUrl = prompt("請輸入 Logo 圖示的圖片網址 (URL)：\n(清空則回復為預設圖示)", window.logoUrl || "");
       if (inputUrl !== null) {
-        logoUrl = inputUrl.trim();
+        window.logoUrl = inputUrl.trim();
         renderLogo();
         if (window.saveToFirebase) window.saveToFirebase();
       }
@@ -555,8 +555,8 @@
       let html = '';
       const isLogined = !!window.currentUser;
 
-      sheets.forEach(s => {
-        const isActive = s.id === activeSheetId ? 'active' : '';
+      window.sheets.forEach(s => {
+        const isActive = s.id === window.activeSheetId ? 'active' : '';
         html += `
           <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')">
             <div>
@@ -565,7 +565,7 @@
             </div>
             <div>
               ${isLogined ? `<i class="fa-solid fa-pen-to-square tab-edit-icon" title="修改名稱" onclick="event.stopPropagation(); editSheetName('${s.id}');"></i>` : ''}
-              ${(sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" title="刪除工作表" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
+              ${(window.sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" title="刪除工作表" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
             </div>
           </div>
         `;
@@ -575,14 +575,14 @@
     }
 
     function switchTab(sheetId) {
-      activeSheetId = sheetId;
+      window.activeSheetId = sheetId;
       renderTabs();
       renderMainContent();
     }
 
     function editSheetName(sheetId) {
       if (!window.currentUser) return;
-      const targetSheet = sheets.find(s => s.id === sheetId);
+      const targetSheet = window.sheets.find(s => s.id === sheetId);
       const newName = prompt("請輸入新的工作表名稱：", targetSheet?.name || "");
       if (newName && newName.trim() !== "") {
         targetSheet.name = newName.trim();
@@ -595,7 +595,7 @@
     function addNewSheet() {
       if (!window.currentUser) return alert('請登入管理員帳號後再進行編輯！');
       const newId = `s_${Date.now()}`;
-      const newName = `工作表${sheets.length + 1}`;
+      const newName = `工作表${window.sheets.length + 1}`;
       
       const defaultCols = [
         { key: "month", title: "月份/時間" },
@@ -603,8 +603,8 @@
         { key: "col_2", title: "項目二" }
       ];
 
-      sheets.push({ id: newId, name: newName, columns: defaultCols, data: [] });
-      activeSheetId = newId;
+      window.sheets.push({ id: newId, name: newName, columns: defaultCols, data: [] });
+      window.activeSheetId = newId;
       if (window.saveToFirebase) window.saveToFirebase();
       renderTabs();
       renderMainContent();
@@ -613,11 +613,11 @@
     function deleteSheet(e, sheetId) {
       e.stopPropagation();
       if (!window.currentUser) return alert('請登入管理員帳號後再進行編輯！');
-      if (sheets.length <= 1) return alert('至少需保留一個工作表！');
+      if (window.sheets.length <= 1) return alert('至少需保留一個工作表！');
       if (confirm('確定要刪除此工作表嗎？')) {
-        sheets = sheets.filter(s => s.id !== sheetId);
-        if (activeSheetId === sheetId) {
-          activeSheetId = sheets[0].id;
+        window.sheets = window.sheets.filter(s => s.id !== sheetId);
+        if (window.activeSheetId === sheetId) {
+          window.activeSheetId = window.sheets[0].id;
         }
         if (window.saveToFirebase) window.saveToFirebase();
         renderTabs();
@@ -627,7 +627,7 @@
 
     function addRow() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
-      const curSheet = sheets.find(s => s.id === activeSheetId);
+      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet) return;
 
       const newRow = {};
@@ -640,7 +640,7 @@
 
     function deleteRow() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
-      const curSheet = sheets.find(s => s.id === activeSheetId);
+      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet || curSheet.data.length === 0) return;
 
       curSheet.data.pop();
@@ -650,7 +650,7 @@
 
     function addColumn() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
-      const curSheet = sheets.find(s => s.id === activeSheetId);
+      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet) return;
 
       const colName = prompt("請輸入新增欄位名稱：", "新欄位");
@@ -666,7 +666,7 @@
 
     function deleteColumn() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
-      const curSheet = sheets.find(s => s.id === activeSheetId);
+      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet || curSheet.columns.length <= 1) return alert('至少需要保留一個欄位！');
 
       const deletedCol = curSheet.columns.pop();
@@ -677,7 +677,7 @@
     }
 
     function updateCellData(rowIndex, colKey, value) {
-      const curSheet = sheets.find(s => s.id === activeSheetId);
+      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (curSheet && curSheet.data[rowIndex]) {
         curSheet.data[rowIndex][colKey] = value.trim();
         if (window.saveToFirebase) window.saveToFirebase();
@@ -685,9 +685,22 @@
       }
     }
 
+    function parseNum(val) {
+      if (val === undefined || val === null || val === "-" || val === "") return 0;
+      let str = String(val).trim().replace(/,/g, '').replace(/NT\$/gi, '').replace(/\$/g, '');
+      let hasPercent = false;
+      if (str.includes('%')) {
+        hasPercent = true;
+        str = str.replace(/%/g, '');
+      }
+      let num = parseFloat(str);
+      if (isNaN(num)) return 0;
+      return hasPercent ? num : num;
+    }
+
     function renderMainContent() {
       const container = document.getElementById('main-content');
-      const currentSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
+      const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
       const isLogined = !!window.currentUser;
       const sheetColumns = currentSheet.columns || [];
 
@@ -732,7 +745,7 @@
           <div class="charts-grid">
         `;
 
-        sheet1ChartConfigs.forEach(cp => {
+        window.sheet1ChartConfigs.forEach(cp => {
           html += `
             <div class="chart-page" id="export-area-${cp.id}">
               <div class="chart-header">
@@ -757,7 +770,7 @@
           <div class="charts-grid-2col">
         `;
 
-        sheet2ChartConfigs.forEach(cp => {
+        window.sheet2ChartConfigs.forEach(cp => {
           html += `
             <div class="chart-page" id="export-area-${cp.id}">
               <div class="chart-header">
@@ -780,77 +793,17 @@
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => {
-          sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
+          window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
         }, 100);
       } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => {
-          sheet2ChartConfigs.forEach(cp => buildChartSheet2(cp, currentSheet));
+          window.sheet2ChartConfigs.forEach(cp => buildChartSheet2(cp, currentSheet));
         }, 100);
       }
     }
 
-    const yearSeparatorPlugin = {
-      id: 'yearSeparatorPlugin',
-      afterDraw(chart) {
-        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-        const labels = chart.data.labels || [];
-        const yearGroups = {};
-        
-        labels.forEach((lbl, idx) => {
-          const yrMatch = String(lbl).match(/\d{2}$/);
-          const yr = yrMatch ? yrMatch[0] : 'Other';
-          if (!yearGroups[yr]) yearGroups[yr] = [];
-          yearGroups[yr].push(idx);
-        });
-
-        const yearKeys = Object.keys(yearGroups);
-        ctx.save();
-
-        yearKeys.forEach((yr, keyIdx) => {
-          if (keyIdx > 0) {
-            const prevLastIdx = yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0];
-            const currFirstIdx = yearGroups[yr][0];
-
-            const prevLastX = x.getPixelForValue(prevLastIdx);
-            const currFirstX = x.getPixelForValue(currFirstIdx);
-            const separatorX = (prevLastX + currFirstX) / 2;
-
-            ctx.beginPath();
-            ctx.setLineDash([]);
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.5;
-            ctx.moveTo(separatorX, top);
-            ctx.lineTo(separatorX, bottom);
-            ctx.stroke();
-          }
-        });
-
-        ctx.restore();
-      }
-    };
-
-    // 全面強化數值解析器：可解析 "5.50%", "0.055", "1,200,000", "NT$ 300"
-    function parseNum(val, isPercentageHint = false) {
-      if (val === undefined || val === null || val === "-" || val === "") return 0;
-      
-      let str = String(val).trim().replace(/,/g, '').replace(/NT\$/gi, '').replace(/\$/g, '');
-      let hasPercentSign = str.includes('%');
-      str = str.replace(/%/g, '');
-      
-      let num = parseFloat(str);
-      if (isNaN(num)) return 0;
-
-      if (hasPercentSign) {
-        return num; // 若為 "5.5%" 轉成 5.5
-      } else if (isPercentageHint && Math.abs(num) <= 1.0 && num !== 0) {
-        return num * 100; // 若原本為 0.055 轉成 5.5%
-      }
-      
-      return num;
-    }
-
-    function getColumnKeyByTitle(sheet, targetTitle) {
-      const col = (sheet.columns || []).find(c => c.title.trim() === targetTitle.trim() || c.title.includes(targetTitle));
+    function findColKeyByTitle(columns, title) {
+      const col = columns.find(c => c.title.trim() === title.trim() || c.title.includes(title));
       return col ? col.key : null;
     }
 
@@ -858,232 +811,151 @@
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
 
-      if (chartInstances[config.id]) {
-        chartInstances[config.id].destroy();
+      if (window.chartInstances[config.id]) {
+        window.chartInstances[config.id].destroy();
       }
 
-      const labels = sheet.data.map(r => r.month || '');
+      const labels = sheet.data.map(d => d.month || '');
+      const cols = sheet.columns;
+
+      let chartData = { labels: labels, datasets: [] };
+      let options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false }
+      };
 
       if (config.type === "combo") {
-        const valKey = getColumnKeyByTitle(sheet, "合計產出市值");
-        const qtyKey = getColumnKeyByTitle(sheet, "合計產出數量");
+        const keyTotalValue = findColKeyByTitle(cols, "合計產出市值");
+        const keyTotalQty = findColKeyByTitle(cols, "合計產出數量");
 
-        const valData = sheet.data.map(r => parseNum(r[valKey]));
-        const qtyData = sheet.data.map(r => parseNum(r[qtyKey]));
-
-        chartInstances[config.id] = new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                type: 'bar',
-                label: '合計產出市值(NT$)',
-                data: valData,
-                backgroundColor: 'rgba(59, 130, 246, 0.75)',
-                borderColor: '#3b82f6',
-                borderWidth: 1,
-                yAxisID: 'y'
-              },
-              {
-                type: 'line',
-                label: '合計產出數量(PCS)',
-                data: qtyData,
-                borderColor: '#ef4444',
-                backgroundColor: '#ef4444',
-                borderWidth: 2,
-                tension: 0.2,
-                pointRadius: 4,
-                yAxisID: 'y1'
-              }
-            ]
+        chartData.datasets = [
+          {
+            type: 'bar',
+            label: '合計產出市值(NT$)',
+            data: sheet.data.map(d => parseNum(d[keyTotalValue])),
+            backgroundColor: 'rgba(2, 132, 199, 0.6)',
+            borderColor: '#0284c7',
+            borderWidth: 1,
+            yAxisID: 'y'
           },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                title: { display: true, text: '市值 (NT$)' }
-              },
-              y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                grid: { drawOnChartArea: false },
-                title: { display: true, text: '數量 (PCS)' }
-              }
-            }
+          {
+            type: 'line',
+            label: '合計產出數量(PCS)',
+            data: sheet.data.map(d => parseNum(d[keyTotalQty])),
+            borderColor: '#e11d48',
+            backgroundColor: '#e11d48',
+            tension: 0.3,
+            yAxisID: 'y1'
           }
-        });
+        ];
+
+        options.scales = {
+          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '市值 (NT$)' } },
+          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '數量 (PCS)' } }
+        };
       } else if (config.type === "line") {
-        const dataKey = getColumnKeyByTitle(sheet, config.dataKey);
-        const lineData = sheet.data.map(r => parseNum(r[dataKey], true));
-
-        chartInstances[config.id] = new Chart(canvas, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: config.dataKey,
-              data: lineData,
-              borderColor: '#8b5cf6',
-              backgroundColor: 'rgba(139, 92, 246, 0.1)',
-              fill: true,
-              borderWidth: 2,
-              tension: 0.2,
-              pointRadius: 4
-            }]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: {
-                ticks: {
-                  callback: function(value) { return value + '%'; }
-                }
-              }
-            }
+        const key = findColKeyByTitle(cols, config.dataKey);
+        chartData.datasets = [
+          {
+            label: config.dataKey,
+            data: sheet.data.map(d => parseNum(d[key])),
+            borderColor: '#7e22ce',
+            backgroundColor: 'rgba(126, 34, 206, 0.1)',
+            fill: true,
+            tension: 0.3
           }
-        });
+        ];
       }
+
+      window.chartInstances[config.id] = new Chart(canvas, {
+        data: chartData,
+        options: options
+      });
     }
 
     function buildChartSheet2(config, sheet) {
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
 
-      if (chartInstances[config.id]) {
-        chartInstances[config.id].destroy();
+      if (window.chartInstances[config.id]) {
+        window.chartInstances[config.id].destroy();
       }
 
-      const labels = sheet.data.map(r => r.month || '');
+      const labels = sheet.data.map(d => d.month || '');
+      const cols = sheet.columns;
+
+      let chartData = { labels: labels, datasets: [] };
+      let options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false }
+      };
 
       if (config.type === "combo_bar_line") {
-        const barKey = getColumnKeyByTitle(sheet, config.barKey);
-        const lineKey = getColumnKeyByTitle(sheet, config.lineKey);
+        const keyBar = findColKeyByTitle(cols, config.barKey);
+        const keyLine = findColKeyByTitle(cols, config.lineKey);
 
-        const barData = sheet.data.map(r => parseNum(r[barKey]));
-        const lineData = sheet.data.map(r => parseNum(r[lineKey], true));
-
-        chartInstances[config.id] = new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                type: 'bar',
-                label: config.barKey,
-                data: barData,
-                backgroundColor: 'rgba(2, 132, 199, 0.75)',
-                borderColor: '#0284c7',
-                borderWidth: 1,
-                yAxisID: 'y'
-              },
-              {
-                type: 'line',
-                label: config.lineKey,
-                data: lineData,
-                borderColor: '#f59e0b',
-                backgroundColor: '#f59e0b',
-                borderWidth: 2,
-                tension: 0.2,
-                pointRadius: 4,
-                yAxisID: 'y1'
-              }
-            ]
+        chartData.datasets = [
+          {
+            type: 'bar',
+            label: config.barKey,
+            data: sheet.data.map(d => parseNum(d[keyBar])),
+            backgroundColor: 'rgba(14, 165, 233, 0.6)',
+            yAxisID: 'y'
           },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                title: { display: true, text: '金額 (NT$)' }
-              },
-              y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                grid: { drawOnChartArea: false },
-                ticks: { callback: function(v) { return v + '%'; } },
-                title: { display: true, text: '佔比 (%)' }
-              }
-            }
+          {
+            type: 'line',
+            label: config.lineKey,
+            data: sheet.data.map(d => parseNum(d[keyLine])),
+            borderColor: '#f59e0b',
+            backgroundColor: '#f59e0b',
+            tension: 0.3,
+            yAxisID: 'y1'
           }
-        });
+        ];
+
+        options.scales = {
+          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額' } },
+          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '佔比 (%)' } }
+        };
       } else if (config.type === "double_line") {
-        const line1Key = getColumnKeyByTitle(sheet, config.line1Key);
-        const line2Key = getColumnKeyByTitle(sheet, config.line2Key);
+        const keyLine1 = findColKeyByTitle(cols, config.line1Key);
+        const keyLine2 = findColKeyByTitle(cols, config.line2Key);
 
-        const data1 = sheet.data.map(r => parseNum(r[line1Key]));
-        const data2 = sheet.data.map(r => parseNum(r[line2Key]));
-
-        chartInstances[config.id] = new Chart(canvas, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: config.line1Key,
-                data: data1,
-                borderColor: '#06b6d4',
-                backgroundColor: '#06b6d4',
-                borderWidth: 2,
-                tension: 0.2,
-                pointRadius: 4
-              },
-              {
-                label: config.line2Key,
-                data: data2,
-                borderColor: '#10b981',
-                backgroundColor: '#10b981',
-                borderWidth: 2,
-                tension: 0.2,
-                pointRadius: 4
-              }
-            ]
+        chartData.datasets = [
+          {
+            type: 'line',
+            label: config.line1Key,
+            data: sheet.data.map(d => parseNum(d[keyLine1])),
+            borderColor: '#2563eb',
+            tension: 0.3
           },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: {
-                type: 'linear',
-                display: true,
-                title: { display: true, text: '金額 (NT$)' }
-              }
-            }
+          {
+            type: 'line',
+            label: config.line2Key,
+            data: sheet.data.map(d => parseNum(d[keyLine2])),
+            borderColor: '#10b981',
+            tension: 0.3
           }
-        });
+        ];
       }
+
+      window.chartInstances[config.id] = new Chart(canvas, {
+        data: chartData,
+        options: options
+      });
     }
 
     function exportChartToPNG(chartId, title) {
-      const element = document.getElementById(`export-area-${chartId}`);
-      if (!element) return;
+      const area = document.getElementById(`export-area-${chartId}`);
+      if (!area) return;
 
-      html2canvas(element, { scale: 2 }).then(canvas => {
+      html2canvas(area, { scale: 2 }).then(canvas => {
         const link = document.createElement('a');
         link.download = `${title.replace(/[^\w\u4e00-\u9fa5]/g, '_')}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-      }).catch(err => {
-        console.error("圖片匯出失敗:", err);
-        alert("匯出圖片失敗，請稍後再試！");
       });
     }
   </script>
