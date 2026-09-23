@@ -101,7 +101,7 @@
 
     /* 表格凍結與樣式 */
     .table-responsive-wrapper {
-      max-height: 480px;
+      max-height: 380px;
       overflow: auto;
       background: #fff;
       border-radius: 6px;
@@ -174,18 +174,28 @@
       display: flex; align-items: center; gap: 8px; border-left: 4px solid #7e22ce; padding-left: 8px;
     }
 
-    .charts-grid { display: flex; flex-direction: column; gap: 24px; margin-bottom: 40px; }
+    /* 2 欄位雙排圖表版面配置 */
+    .charts-grid-2col {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 1024px) {
+      .charts-grid-2col { grid-template-columns: 1fr; }
+    }
 
     .chart-page {
-      display: flex; flex-direction: column; gap: 16px; background: #ffffff; padding: 20px;
+      display: flex; flex-direction: column; gap: 12px; background: #ffffff; padding: 16px;
       border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .chart-header { display: flex; justify-content: space-between; align-items: center; }
-    .chart-title { color: #0f172a; font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .chart-title { color: #0f172a; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
     
     .chart-wrapper {
-      position: relative; width: 100%; height: 380px;
-      background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;
+      position: relative; width: 100%; height: 320px;
+      background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;
     }
     .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
     .status-badge.loading { background: #fef3c7; color: #d97706; }
@@ -351,7 +361,7 @@
       document.getElementById('login-password').value = '';
     };
 
-    const defaultColumns = [
+    const defaultColumns1 = [
       { key: "month", title: "月份/時間" },
       { key: "item_0", title: "石墨產出市值(NT$)" },
       { key: "item_1", title: "石墨產出數量(PCS)" },
@@ -362,20 +372,43 @@
       { key: "item_10", title: "加班費/產值" }
     ];
 
-    // 初始化時徹底切斷 reference 綁定
+    const defaultColumns2 = [
+      { key: "month", title: "月份/時間" },
+      { key: "c1", title: "鎢鉬鉭刀具費" },
+      { key: "c2", title: "鎢鉬鉭刀具費/成本" },
+      { key: "c3", title: "鎢鉬鉭產品成本" },
+      { key: "c4", title: "石墨刀具費" },
+      { key: "c5", title: "石墨刀具費/成本" },
+      { key: "c6", title: "石墨產品成本" },
+      { key: "c7", title: "其他刀具費" },
+      { key: "c8", title: "其他刀具費/成本" },
+      { key: "c9", title: "其他產品成本" }
+    ];
+
     window.sheets = [
-      { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns)), data: [] },
-      { id: "s2", name: "刀具費佔成本", columns: JSON.parse(JSON.stringify(defaultColumns)), data: [] }
+      { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] },
+      { id: "s2", name: "刀具費佔成本", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: [] }
     ];
     window.activeSheetId = "s1";
     window.logoUrl = "";
     window.chartInstances = {};
 
-    window.chartConfigs = [
-      { id: "chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
-      { id: "chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
-      { id: "chart_3", title: "📊 刀具費/產值 分析圖", type: "line", dataKey: "刀具費/產值" },
-      { id: "chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
+    // 第一個工作表圖表配置
+    window.sheet1ChartConfigs = [
+      { id: "s1_chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
+      { id: "s1_chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
+      { id: "s1_chart_3", title: "📊 刀具費/產值 分析圖", type: "line", dataKey: "刀具費/產值" },
+      { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
+    ];
+
+    // 第二個工作表（刀具費佔成本）專屬 6 個圖表配置（將房廂組更正為鎢鉬鉭）
+    window.sheet2ChartConfigs = [
+      { id: "s2_chart_1", title: "鎢鉬鉭刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "鎢鉬鉭刀具費", lineKey: "鎢鉬鉭刀具費/成本" },
+      { id: "s2_chart_2", title: "鎢鉬鉭刀具費與成本趨勢圖", type: "double_line", line1Key: "鎢鉬鉭刀具費", line2Key: "鎢鉬鉭產品成本" },
+      { id: "s2_chart_3", title: "石墨刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "石墨刀具費", lineKey: "石墨刀具費/成本" },
+      { id: "s2_chart_4", title: "石墨刀具費與成本趨勢圖", type: "double_line", line1Key: "石墨刀具費", line2Key: "石墨產品成本" },
+      { id: "s2_chart_5", title: "其他刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "其他刀具費", lineKey: "其他刀具費/成本" },
+      { id: "s2_chart_6", title: "其他刀具費與成本趨勢圖", type: "double_line", line1Key: "其他刀具費", line2Key: "其他產品成本" }
     ];
 
     window.saveToFirebase = async function() {
@@ -411,11 +444,10 @@
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.sheets && Array.isArray(data.sheets)) {
-          // 關鍵修復：獨立解析並補全每個 sheet 專屬的 columns 陣列
           window.sheets = data.sheets.map(s => ({
             id: s.id,
             name: s.name,
-            columns: s.columns ? JSON.parse(JSON.stringify(s.columns)) : JSON.parse(JSON.stringify(defaultColumns)),
+            columns: s.columns ? JSON.parse(JSON.stringify(s.columns)) : JSON.parse(JSON.stringify(defaultColumns1)),
             data: s.data || []
           }));
         }
@@ -429,7 +461,6 @@
       window.renderMainContent();
     });
 
-    // 獨立 Excel 匯入：精準針對 activeSheetId 進行覆蓋
     document.getElementById('upload-excel').addEventListener('change', function(e) {
       if (!window.currentUser) return alert('請先登入管理員帳號後再進行匯入！');
       
@@ -482,13 +513,11 @@
             parsedData = rawJson;
           }
 
-          // 核心隔離邏輯：透過 activeSheetId 精準定位要寫入的工作表
           const targetIndex = window.sheets.findIndex(s => s.id === window.activeSheetId);
           if (targetIndex !== -1) {
             window.sheets[targetIndex].columns = parsedColumns;
             window.sheets[targetIndex].data = parsedData;
             
-            // 儲存寫入 Firebase 並刷新 DOM
             window.saveToFirebase();
             window.renderMainContent();
           } else {
@@ -499,7 +528,7 @@
           console.error(err);
           alert('解析 Excel 失敗！');
         }
-        e.target.value = ''; // 清空選擇檔名，使相同檔案再次點擊仍可觸發 change
+        e.target.value = '';
       };
       reader.readAsArrayBuffer(file);
     });
@@ -655,7 +684,6 @@
       renderMainContent();
     }
 
-    // 將表格單元格變更即時更新至記憶體 data
     function updateCellData(rowIndex, colKey, value) {
       const curSheet = sheets.find(s => s.id === activeSheetId);
       if (curSheet && curSheet.data[rowIndex]) {
@@ -700,9 +728,10 @@
         html += `</tbody></table></div>`;
       }
 
-      const isFirstDefaultSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
+      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
+      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
 
-      if (isFirstDefaultSheet && currentSheet.data && currentSheet.data.length > 0) {
+      if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `
           <div class="charts-section-title">
             <i class="fa-solid fa-chart-line"></i> 分析圖表 (資料來源：${currentSheet.name})
@@ -710,7 +739,7 @@
           <div class="charts-grid">
         `;
 
-        chartConfigs.forEach(cp => {
+        sheet1ChartConfigs.forEach(cp => {
           html += `
             <div class="chart-page" id="export-area-${cp.id}">
               <div class="chart-header">
@@ -727,18 +756,88 @@
         });
 
         html += `</div>`;
+      } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
+        html += `
+          <div class="charts-section-title">
+            <i class="fa-solid fa-chart-pie"></i> 第二個工作頁新增以下六個圖表分析
+          </div>
+          <div class="charts-grid-2col">
+        `;
+
+        sheet2ChartConfigs.forEach(cp => {
+          html += `
+            <div class="chart-page" id="export-area-${cp.id}">
+              <div class="chart-header">
+                <div class="chart-title"><i class="fa-solid fa-chart-column" style="color:#0284c7;"></i> ${cp.title}</div>
+                <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')">
+                  <i class="fa-solid fa-download"></i> 匯出 PNG
+                </button>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="canvas-${cp.id}"></canvas>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
       }
 
       container.innerHTML = html;
 
-      if (isFirstDefaultSheet && currentSheet.data && currentSheet.data.length > 0) {
+      if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => {
-          chartConfigs.forEach(cp => buildChart(cp, currentSheet));
+          sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
+        }, 100);
+      } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
+        setTimeout(() => {
+          sheet2ChartConfigs.forEach(cp => buildChartSheet2(cp, currentSheet));
         }, 100);
       }
     }
 
-    function buildChart(chartConfig, currentSheet) {
+    // 跨年份黑色垂直分隔線 Plugin
+    const yearSeparatorPlugin = {
+      id: 'yearSeparatorPlugin',
+      afterDraw(chart) {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        const labels = chart.data.labels || [];
+        const yearGroups = {};
+        
+        labels.forEach((lbl, idx) => {
+          const yrMatch = String(lbl).match(/\d{2}$/);
+          const yr = yrMatch ? yrMatch[0] : 'Other';
+          if (!yearGroups[yr]) yearGroups[yr] = [];
+          yearGroups[yr].push(idx);
+        });
+
+        const yearKeys = Object.keys(yearGroups);
+        ctx.save();
+
+        yearKeys.forEach((yr, keyIdx) => {
+          if (keyIdx > 0) {
+            const prevLastIdx = yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0];
+            const currFirstIdx = yearGroups[yr][0];
+
+            const prevLastX = x.getPixelForValue(prevLastIdx);
+            const currFirstX = x.getPixelForValue(currFirstIdx);
+            const separatorX = (prevLastX + currFirstX) / 2;
+
+            ctx.beginPath();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(separatorX, top);
+            ctx.lineTo(separatorX, bottom);
+            ctx.stroke();
+          }
+        });
+
+        ctx.restore();
+      }
+    };
+
+    function buildChartSheet1(chartConfig, currentSheet) {
       const canvas = document.getElementById(`canvas-${chartConfig.id}`);
       if (!canvas) return;
 
@@ -774,50 +873,12 @@
               y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
             },
             plugins: { legend: { labels: { color: '#0f172a' } } }
-          }
+          },
+          plugins: [yearSeparatorPlugin]
         });
 
       } else {
         const lineValues = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.dataKey)));
-
-        const yearSeparatorPlugin = {
-          id: 'yearSeparatorPlugin',
-          afterDraw(chart) {
-            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-            const yearGroups = {};
-            
-            labels.forEach((lbl, idx) => {
-              const yrMatch = lbl.match(/\d{2}$/);
-              const yr = yrMatch ? yrMatch[0] : 'Other';
-              if (!yearGroups[yr]) yearGroups[yr] = [];
-              yearGroups[yr].push(idx);
-            });
-
-            const yearKeys = Object.keys(yearGroups);
-            ctx.save();
-
-            yearKeys.forEach((yr, keyIdx) => {
-              if (keyIdx > 0) {
-                const prevLastIdx = yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0];
-                const currFirstIdx = yearGroups[yr][0];
-
-                const prevLastX = x.getPixelForValue(prevLastIdx);
-                const currFirstX = x.getPixelForValue(currFirstIdx);
-                const separatorX = (prevLastX + currFirstX) / 2;
-
-                ctx.beginPath();
-                ctx.setLineDash([]);
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 2;
-                ctx.moveTo(separatorX, top);
-                ctx.lineTo(separatorX, bottom);
-                ctx.stroke();
-              }
-            });
-
-            ctx.restore();
-          }
-        };
 
         chartInstances[chartConfig.id] = new Chart(ctx, {
           type: 'line',
@@ -836,6 +897,74 @@
               y: { ticks: { color: '#334155' }, grid: { color: '#e2e8f0' } }
             },
             plugins: { legend: { labels: { color: '#0f172a' } } }
+          },
+          plugins: [yearSeparatorPlugin]
+        });
+      }
+    }
+
+    // 第二個工作頁（6 個圖表）繪製邏輯
+    function buildChartSheet2(chartConfig, currentSheet) {
+      const canvas = document.getElementById(`canvas-${chartConfig.id}`);
+      if (!canvas) return;
+
+      const dataSheet = currentSheet.data;
+      if (!dataSheet || dataSheet.length === 0) return;
+
+      const labels = dataSheet.map(r => r.month || "");
+
+      if (chartInstances[chartConfig.id]) {
+        chartInstances[chartConfig.id].destroy();
+      }
+
+      const ctx = canvas.getContext('2d');
+
+      if (chartConfig.type === "combo_bar_line") {
+        const barVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.barKey)));
+        const lineVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.lineKey)));
+
+        chartInstances[chartConfig.id] = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: chartConfig.barKey, data: barVals, backgroundColor: 'rgba(100, 116, 139, 0.7)', borderColor: '#64748b', borderWidth: 1, yAxisID: 'y' },
+              { label: chartConfig.lineKey, data: lineVals, type: 'line', borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 3, yAxisID: 'y1' }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+              x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+              y: { type: 'linear', position: 'left', ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+              y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#b91c1c', font: { size: 10 }, callback: v => v + '%' } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+          },
+          plugins: [yearSeparatorPlugin]
+        });
+
+      } else if (chartConfig.type === "double_line") {
+        const line1Vals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.line1Key)));
+        const line2Vals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.line2Key)));
+
+        chartInstances[chartConfig.id] = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: chartConfig.line1Key, data: line1Vals, borderColor: '#0284c7', backgroundColor: '#0284c7', borderWidth: 2, pointRadius: 3, tension: 0.1, yAxisID: 'y' },
+              { label: chartConfig.line2Key, data: line2Vals, borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 3, tension: 0.1, yAxisID: 'y1' }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+              x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+              y: { type: 'linear', position: 'left', ticks: { color: '#0284c7', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+              y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#b91c1c', font: { size: 10 } } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
           },
           plugins: [yearSeparatorPlugin]
         });
