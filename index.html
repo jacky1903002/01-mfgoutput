@@ -699,7 +699,7 @@
       XLSX.writeFile(wb, `${currentSheet.name}_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-/* 匯入 Excel 監聽事件（動態調適欄位與格式） */
+/* 匯入 Excel 監聽事件（支援矩陣/轉置表格解析） */
 document.getElementById('upload-excel').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -712,37 +712,81 @@ document.getElementById('upload-excel').addEventListener('change', function(e) {
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
 
-      // 1. 使用 raw: false 保持顯示格式（如日期字串），defval 避免缺值時欄位錯位
-      const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "" });
+      // 取得二維陣列 rawData (包含表頭與儲存格原生字串)
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "-" });
 
-      if (rawJson.length === 0) {
+      if (rawData.length === 0) {
         alert('匯入的 Excel 檔案中沒有數據！');
         return;
       }
 
-      // 2. 自動擷取 Excel 的所有標題名稱，動態更新 columns 陣列
-      const excelHeaders = Object.keys(rawJson[0]);
-      columns = excelHeaders.map(headerText => ({
-        key: headerText,
-        title: headerText,
-        // 若欄位名稱包含 "進度" 或 "%"，自動啟用進度條樣式
-        isProgress: headerText.includes('進度') || headerText.includes('%')
-      }));
+      // 檢查第一格（A1）是否為「項目」，如果是，代表為縱向項目表 (矩陣格式)
+      const firstCell = String(rawData[0][0]).trim();
+      
+      let parsedColumns = [];
+      let parsedData = [];
 
-      // 3. 載入資料至當前選取的工作表
+      if (firstCell === "項目" || firstCell.includes("項目")) {
+        // --- 矩陣格式解析邏輯 ---
+        const itemNames = []; // 儲存第一欄所有項目名稱 (如：石墨產出市值、加班費...)
+        for (let i = 1; i < rawData.length; i++) {
+          const name = rawData[i][0] ? String(rawData[i][0]).trim() : `欄位_${i}`;
+          if (name && name !== "-") itemNames.push(name);
+        }
+
+        // 動態生成表頭 (第一欄固定為「月份/時間」，其餘為項目名稱)
+        parsedColumns = [
+          { key: "month", title: "月份/時間" },
+          ...itemNames.map((name, idx) => ({
+            key: `item_${idx}`,
+            title: name,
+            isProgress: name.includes("進度") || name.includes("%") || name.includes("比例")
+          }))
+        ];
+
+        // 轉置資料列 (把每一個月份變成一列資料)
+        const headerRow = rawData[0]; // Jan-20, Feb-20, Mar-20...
+        for (let colIdx = 1; colIdx < headerRow.length; colIdx++) {
+          const monthName = headerRow[colIdx];
+          if (!monthName || monthName === "-") continue;
+
+          const rowData = { month: monthName };
+          itemNames.forEach((_, itemIdx) => {
+            const val = (rawData[itemIdx + 1] && rawData[itemIdx + 1][colIdx] !== undefined)
+              ? rawData[itemIdx + 1][colIdx]
+              : "-";
+            rowData[`item_${itemIdx}`] = val;
+          });
+          parsedData.push(rowData);
+        }
+
+      } else {
+        // --- 一般標準橫向表格解析邏輯 ---
+        const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
+        const headers = Object.keys(rawJson[0]);
+        parsedColumns = headers.map(h => ({
+          key: h,
+          title: h,
+          isProgress: h.includes("進度") || h.includes("%")
+        }));
+        parsedData = rawJson;
+      }
+
+      // 更新動態欄位並渲染至當前工作表
+      columns = parsedColumns;
       const currentSheet = sheets.find(s => s.id === activeSheetId);
       if (currentSheet) {
-        currentSheet.data = rawJson;
-        renderTable(); // 重新繪製表頭與內容
-        alert(`成功匯入 ${rawJson.length} 筆資料，並已自動匹配欄位！`);
+        currentSheet.data = parsedData;
+        renderTable();
+        alert(`成功將「${firstCell === "項目" ? "縱向項目矩陣表" : "標準表格"}」正確解析並匯入！`);
       }
+
     } catch (err) {
       console.error(err);
-      alert('解析 Excel 檔案失敗，請確認檔案內容格式！');
+      alert('解析 Excel 檔案失敗，請確認檔案格式！');
     }
     
-    // 重置 input，便於再次選取相同檔案
-    e.target.value = '';
+    e.target.value = ''; // 重置 input
   };
   reader.readAsArrayBuffer(file);
 });
