@@ -150,7 +150,7 @@
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       border: 1px solid #1e293b;
       border-bottom: none;
       white-space: nowrap;
@@ -160,10 +160,21 @@
       background: #0284c7;
       color: #fff;
     }
+    .tab-item .btn-edit-title {
+      font-size: 10px;
+      opacity: 0.6;
+      cursor: pointer;
+      padding: 2px;
+    }
+    .tab-item .btn-edit-title:hover {
+      opacity: 1;
+      color: #38bdf8;
+    }
     .tab-item .close-tab {
       font-size: 12px;
       border-radius: 50%;
       padding: 0 2px;
+      margin-left: 2px;
     }
     .tab-item .close-tab:hover {
       background: rgba(255,255,255,0.2);
@@ -205,33 +216,41 @@
       z-index: 10;
       user-select: none;
     }
+    table.custom-table th .btn-edit-col {
+      font-size: 10px;
+      color: #64748b;
+      margin-left: 4px;
+      cursor: pointer;
+    }
+    table.custom-table th .btn-edit-col:hover { color: #38bdf8; }
     table.custom-table th .close-col {
       color: #64748b;
-      margin-left: 6px;
+      margin-left: 4px;
       cursor: pointer;
     }
     table.custom-table th .close-col:hover { color: #ef4444; }
+
     table.custom-table td {
       padding: 10px 8px;
       border-bottom: 1px solid #151f38;
       white-space: nowrap;
     }
+    /* 可編輯儲存格樣式 */
+    table.custom-table td[contenteditable="true"] {
+      outline: none;
+      transition: background 0.2s;
+    }
+    table.custom-table td[contenteditable="true"]:focus {
+      background-color: #1e293b;
+      box-shadow: inset 0 0 0 1px #38bdf8;
+      border-radius: 3px;
+      color: #fff;
+    }
+
     table.custom-table tr:hover {
       background-color: #111c3e;
     }
     tr.dragging { opacity: 0.4; }
-
-    /* 內聯編輯輸入框樣式 */
-    .inline-edit-input {
-      background: #1e293b;
-      border: 1px solid #38bdf8;
-      color: #fff;
-      font-size: 12px;
-      padding: 2px 6px;
-      border-radius: 3px;
-      outline: none;
-      width: 90%;
-    }
 
     /* 進度條樣式 */
     .progress-box {
@@ -297,7 +316,6 @@
         </div>
         <div style="display:flex; align-items:center;">
           <h1 class="system-title">MFG Output Analysis</h1>
-          <!-- 1. 輸入圖片網址 -->
           <div class="url-input-group">
             <input type="text" id="logo-url-input" placeholder="輸入標題 Logo 圖片網址...">
             <button class="btn btn-dark" style="padding: 3px 8px;" onclick="applyLogoUrl()">套用 Logo</button>
@@ -314,7 +332,7 @@
     </div>
   </header>
 
-  <!-- 工作表分頁區 (支援雙擊編輯工作表名稱) -->
+  <!-- 工作表分頁區 -->
   <div class="nav-tabs-container">
     <div class="project-tag">專案進度追蹤表</div>
     <div class="sheet-tabs" id="sheet-tabs-list"></div>
@@ -332,7 +350,7 @@
     <button id="btn-save" class="btn btn-dark" onclick="saveToFirebase()" disabled><i class="fa-solid fa-cloud-arrow-up"></i> 雲端儲存</button>
   </div>
 
-  <!-- 主數據表格區塊 (支援雙擊編輯欄位標題與單元格數據) -->
+  <!-- 主數據表格區塊 -->
   <div class="table-container">
     <table class="custom-table" id="main-table">
       <thead id="table-head"></thead>
@@ -418,12 +436,12 @@
           columns: JSON.stringify(columns),
           updatedAt: new Date().toISOString()
         });
-        alert('☁️ 已成功同步全部分頁與自訂欄位至雲端！');
+        alert('☁️ 已成功同步全部分頁與數據至雲端！');
       } catch (err) { alert('儲存失敗：' + err.message); }
     };
   </script>
 
-  <!-- 核心資料邏輯與介面控制 -->
+  <!-- 核心數據邏輯 -->
   <script>
     // 預設欄位定義
     let columns = [
@@ -463,21 +481,22 @@
       const url = document.getElementById('logo-url-input').value.trim();
       const logoBox = document.getElementById('logo-box');
       if (url) {
-        logoBox.innerHTML = `<img src="${url}" alt="Logo" onerror="alert('無法讀取該圖片網址，請確認連結！'); this.parentNode.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';">`;
+        logoBox.innerHTML = `<img src="${url}" alt="Logo" onerror="alert('無法讀取該圖片網址！'); this.parentNode.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';">`;
       } else {
         logoBox.innerHTML = `<i class="fa-solid fa-chart-line"></i>`;
       }
     }
 
-    // 渲染工作表分頁 (支援雙擊修改工作表名稱)
+    // 1. 工作表 (Tabs) 渲染與獨立修改名稱
     function renderTabs() {
       const container = document.getElementById('sheet-tabs-list');
       let html = '';
       sheets.forEach(s => {
         const isActive = s.id === activeSheetId ? 'active' : '';
         html += `
-          <div class="tab-item ${isActive}" onclick="switchSheet('${s.id}')" ondblclick="editSheetName(event, '${s.id}')" title="雙擊可修改名稱">
-            <span class="sheet-title">${s.name}</span>
+          <div class="tab-item ${isActive}" onclick="switchSheet('${s.id}')">
+            <span>${s.name}</span>
+            <i class="fa-solid fa-pen btn-edit-title" onclick="editSheetName(event, '${s.id}')" title="修改工作表名稱"></i>
             <span class="close-tab" onclick="deleteSheet(event, '${s.id}')">×</span>
           </div>
         `;
@@ -488,29 +507,14 @@
     }
 
     function editSheetName(e, id) {
-      e.stopPropagation();
+      e.stopPropagation(); // 阻止切換 Tab 事件
       const sheet = sheets.find(s => s.id === id);
       if (!sheet) return;
-      const target = e.currentTarget.querySelector('.sheet-title');
-      const oldName = sheet.name;
-      
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'inline-edit-input';
-      input.value = oldName;
-      input.style.width = '100px';
-
-      target.replaceWith(input);
-      input.focus();
-
-      const save = () => {
-        const val = input.value.trim();
-        sheet.name = val || oldName;
+      const newName = prompt("請輸入新的工作表名稱：", sheet.name);
+      if (newName && newName.trim() !== "") {
+        sheet.name = newName.trim();
         renderTabs();
-      };
-
-      input.onblur = save;
-      input.onkeydown = (ev) => { if (ev.key === 'Enter') save(); };
+      }
     }
 
     function switchSheet(id) {
@@ -550,25 +554,26 @@
       }
     }
 
-    // 渲染表格 (支援雙擊修改欄位名稱與列位/單元格數據)
+    // 2. 表格渲染與欄/列修改
     function renderTable() {
       const currentSheet = sheets.find(s => s.id === activeSheetId);
       if (!currentSheet) return;
 
-      // 1. Header (雙擊修改欄位名稱)
+      // 繪製表頭 (Header)
       const thead = document.getElementById('table-head');
       let headHtml = '<tr><th style="width: 30px;">:::</th>';
       columns.forEach((col, cIdx) => {
         headHtml += `
-          <th ondblclick="editColumnTitle(event, ${cIdx})" title="雙擊可修改欄位名稱">
-            <span class="col-title">${col.title}</span>
+          <th>
+            <span>${col.title}</span>
+            <i class="fa-solid fa-pen btn-edit-col" onclick="editColumnTitle(${cIdx})" title="修改欄位標題"></i>
             <span class="close-col" onclick="deleteColumn(${cIdx})" title="刪除此欄">×</span>
           </th>`;
       });
       headHtml += '<th>操作</th></tr>';
       thead.innerHTML = headHtml;
 
-      // 2. Body (雙擊修改儲存格內容)
+      // 繪製資料 (Body)
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
       
@@ -583,74 +588,62 @@
         tr.ondragend = handleDragEnd;
 
         let rowHtml = `<td style="color:#475569; cursor:grab;"><i class="fa-solid fa-grip-vertical"></i></td>`;
+        
         columns.forEach(col => {
           const val = row[col.key] !== undefined ? row[col.key] : '-';
+          
           if (col.isProgress) {
-            rowHtml += `<td ondblclick="editCell(event, ${rIdx}, '${col.key}')">${renderProgress(val)}</td>`;
-          } else if (col.key === 'status') {
-            rowHtml += `<td ondblclick="editCell(event, ${rIdx}, '${col.key}')"><span class="${val === '進行中' ? 'status-ongoing' : 'status-notstart'}">${val}</span></td>`;
+            // 進度條特別呈現 (點擊可編輯數值)
+            rowHtml += `
+              <td onclick="editProgressValue(${rIdx}, '${col.key}', ${val})" style="cursor:pointer;" title="點擊修改進度數值">
+                ${renderProgress(val)}
+              </td>`;
           } else {
-            rowHtml += `<td ondblclick="editCell(event, ${rIdx}, '${col.key}')">${val}</td>`;
+            // 一般欄位直接開通可打字屬性 (contenteditable)
+            rowHtml += `
+              <td contenteditable="true" 
+                  onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)"
+                  title="點擊直接打字修改">
+                ${val}
+              </td>`;
           }
         });
+        
         rowHtml += `<td><span class="action-link" onclick="deleteRow(${rIdx})">刪除</span></td>`;
         tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
       });
     }
 
-    // 雙擊修改欄位名稱
-    function editColumnTitle(e, cIdx) {
-      e.stopPropagation();
+    // 欄位標題修改
+    function editColumnTitle(cIdx) {
       const col = columns[cIdx];
-      const th = e.currentTarget;
-      const titleSpan = th.querySelector('.col-title');
-      const oldTitle = col.title;
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'inline-edit-input';
-      input.value = oldTitle;
-
-      titleSpan.replaceWith(input);
-      input.focus();
-
-      const save = () => {
-        const val = input.value.trim();
-        col.title = val || oldTitle;
+      const newTitle = prompt("請輸入新的欄位名稱：", col.title);
+      if (newTitle && newTitle.trim() !== "") {
+        col.title = newTitle.trim();
         renderTable();
-      };
-
-      input.onblur = save;
-      input.onkeydown = (ev) => { if (ev.key === 'Enter') save(); };
+      }
     }
 
-    // 雙擊修改列位/單元格數據
-    function editCell(e, rIdx, key) {
-      e.stopPropagation();
+    // 單元格內容直接失焦更新 (onblur)
+    function updateCellData(rIdx, key, text) {
       const currentSheet = sheets.find(s => s.id === activeSheetId);
-      if (!currentSheet) return;
+      if (currentSheet && currentSheet.data[rIdx]) {
+        currentSheet.data[rIdx][key] = text.trim();
+      }
+    }
 
-      const td = e.currentTarget;
-      const oldVal = currentSheet.data[rIdx][key] !== undefined ? currentSheet.data[rIdx][key] : '';
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'inline-edit-input';
-      input.value = oldVal;
-
-      td.innerHTML = '';
-      td.appendChild(input);
-      input.focus();
-
-      const save = () => {
-        const val = input.value.trim();
-        currentSheet.data[rIdx][key] = val;
-        renderTable();
-      };
-
-      input.onblur = save;
-      input.onkeydown = (ev) => { if (ev.key === 'Enter') save(); };
+    // 進度數值專用修改
+    function editProgressValue(rIdx, key, currentVal) {
+      const newVal = prompt("請輸入新的進度數值 (0-100)：", currentVal);
+      if (newVal !== null) {
+        const num = parseInt(newVal) || 0;
+        const currentSheet = sheets.find(s => s.id === activeSheetId);
+        if (currentSheet && currentSheet.data[rIdx]) {
+          currentSheet.data[rIdx][key] = Math.min(100, Math.max(0, num));
+          renderTable();
+        }
+      }
     }
 
     function renderProgress(val) {
@@ -664,7 +657,7 @@
         </div>`;
     }
 
-    // 欄位與列位操作
+    // 欄/列 增刪
     function addColumn() {
       const name = prompt("請輸入新自訂欄位名稱：");
       if (!name) return;
@@ -695,7 +688,7 @@
       renderTable();
     }
 
-    // HTML5 拖動排序 (Drag and Drop)
+    // 拖曳排序 (Drag & Drop)
     let dragSrcIndex = null;
     function handleDragStart(e) {
       dragSrcIndex = this.dataset.index;
@@ -730,7 +723,7 @@
       XLSX.writeFile(wb, `${currentSheet.name}_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    // 初始化頁面
+    // 頁面初始化
     renderTabs();
     renderTable();
   </script>
