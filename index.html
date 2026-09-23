@@ -832,7 +832,7 @@
         chartData.datasets = [
           {
             type: 'bar',
-            label: '合計產出市值(NT$)',
+            label: '合計產出市值 (NT$)',
             data: sheet.data.map(d => parseNum(d[keyTotalValue])),
             backgroundColor: 'rgba(2, 132, 199, 0.6)',
             borderColor: '#0284c7',
@@ -841,34 +841,35 @@
           },
           {
             type: 'line',
-            label: '合計產出數量(PCS)',
+            label: '合計產出數量 (PCS)',
             data: sheet.data.map(d => parseNum(d[keyTotalQty])),
-            borderColor: '#e11d48',
-            backgroundColor: '#e11d48',
+            borderColor: '#ef4444',
+            backgroundColor: '#ef4444',
+            borderWidth: 2,
             tension: 0.3,
             yAxisID: 'y1'
           }
         ];
 
         options.scales = {
-          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '市值 (NT$)' } },
-          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '數量 (PCS)' } }
+          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'NT$' } },
+          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'PCS' } }
         };
       } else if (config.type === "line") {
         const key = findColKeyByTitle(cols, config.dataKey);
-        chartData.datasets = [
-          {
-            label: config.dataKey,
-            data: sheet.data.map(d => parseNum(d[key])),
-            borderColor: '#7e22ce',
-            backgroundColor: 'rgba(126, 34, 206, 0.1)',
-            fill: true,
-            tension: 0.3
-          }
-        ];
+        chartData.datasets = [{
+          label: config.dataKey,
+          data: sheet.data.map(d => parseNum(d[key])),
+          borderColor: '#7e22ce',
+          backgroundColor: 'rgba(126, 34, 206, 0.1)',
+          fill: true,
+          borderWidth: 2,
+          tension: 0.3
+        }];
       }
 
       window.chartInstances[config.id] = new Chart(canvas, {
+        type: config.type === "combo" ? 'bar' : 'line',
         data: chartData,
         options: options
       });
@@ -893,65 +894,69 @@
       };
 
       if (config.type === "combo_bar_line") {
-        const keyBar = findColKeyByTitle(cols, config.barKey);
-        const keyLine = findColKeyByTitle(cols, config.lineKey);
+        const barKey = findColKeyByTitle(cols, config.barKey);
+        const lineKey = findColKeyByTitle(cols, config.lineKey);
 
         chartData.datasets = [
           {
             type: 'bar',
             label: config.barKey,
-            data: sheet.data.map(d => parseNum(d[keyBar])),
-            backgroundColor: 'rgba(14, 165, 233, 0.6)',
+            data: sheet.data.map(d => parseNum(d[barKey])),
+            backgroundColor: 'rgba(2, 132, 199, 0.6)',
+            borderColor: '#0284c7',
+            borderWidth: 1,
             yAxisID: 'y'
           },
           {
             type: 'line',
             label: config.lineKey,
-            data: sheet.data.map(d => parseNum(d[keyLine])),
+            data: sheet.data.map(d => parseNum(d[lineKey])),
             borderColor: '#f59e0b',
             backgroundColor: '#f59e0b',
+            borderWidth: 2,
             tension: 0.3,
             yAxisID: 'y1'
           }
         ];
 
         options.scales = {
-          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額' } },
-          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '佔比 (%)' } }
+          y: { type: 'linear', display: true, position: 'left' },
+          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
         };
       } else if (config.type === "double_line") {
-        const keyLine1 = findColKeyByTitle(cols, config.line1Key);
-        const keyLine2 = findColKeyByTitle(cols, config.line2Key);
+        const line1Key = findColKeyByTitle(cols, config.line1Key);
+        const line2Key = findColKeyByTitle(cols, config.line2Key);
 
         chartData.datasets = [
           {
-            type: 'line',
             label: config.line1Key,
-            data: sheet.data.map(d => parseNum(d[keyLine1])),
-            borderColor: '#2563eb',
+            data: sheet.data.map(d => parseNum(d[line1Key])),
+            borderColor: '#0284c7',
+            borderWidth: 2,
             tension: 0.3
           },
           {
-            type: 'line',
             label: config.line2Key,
-            data: sheet.data.map(d => parseNum(d[keyLine2])),
+            data: sheet.data.map(d => parseNum(d[line2Key])),
             borderColor: '#10b981',
+            borderWidth: 2,
             tension: 0.3
           }
         ];
       }
 
       window.chartInstances[config.id] = new Chart(canvas, {
+        type: 'bar',
         data: chartData,
         options: options
       });
     }
 
     function exportChartToPNG(chartId, title) {
-      const area = document.getElementById(`export-area-${chartId}`);
-      if (!area) return;
+      const exportArea = document.getElementById(`export-area-${chartId}`);
+      if (!exportArea) return;
 
-      html2canvas(area, { scale: 2 }).then(canvas => {
+      html2canvas(exportArea, { scale: 2 }).then(canvas => {
         const link = document.createElement('a');
         link.download = `${title.replace(/[^\w\u4e00-\u9fa5]/g, '_')}.png`;
         link.href = canvas.toDataURL('image/png');
