@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>雲端線上試算表系統 (Firebase + Luckysheet)</title>
+  <title>專業產出分析系統 (Firebase Email/Password + Luckysheet)</title>
   
   <!-- Luckysheet CSS & JS -->
   <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/css/pluginsCss.css' />
@@ -23,7 +23,7 @@
     
     /* 工具列樣式 */
     #toolbar {
-      background-color: #1e293b;
+      background-color: #0f172a;
       color: #fff;
       padding: 10px 16px;
       display: flex;
@@ -34,26 +34,46 @@
     }
     .btn-group { display: flex; gap: 8px; align-items: center; }
     button, label.btn-label {
-      background-color: #3b82f6;
+      background-color: #2563eb;
       color: white;
       border: none;
       padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       display: inline-flex;
       align-items: center;
       transition: background 0.2s;
     }
-    button:hover, label.btn-label:hover { background-color: #2563eb; }
+    button:hover, label.btn-label:hover { background-color: #1d4ed8; }
     button.btn-danger { background-color: #ef4444; }
     button.btn-danger:hover { background-color: #dc2626; }
     button.btn-success { background-color: #10b981; }
     button.btn-success:hover { background-color: #059669; }
+    button.btn-warning { background-color: #f59e0b; color: #1e293b; font-weight: bold; }
+    button.btn-warning:hover { background-color: #d97706; }
     button:disabled { background-color: #64748b; cursor: not-allowed; }
     
-    #user-info { font-size: 14px; color: #cbd5e1; }
+    #user-info { font-size: 13px; color: #94a3b8; }
     #luckysheet { width: 100%; flex: 1; margin: 0px; padding: 0px; position: absolute; top: 55px; left: 0px; bottom: 0px; }
+
+    /* 登入彈窗 (Modal) 樣式 */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 2000;
+      display: none; justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background: #fff; padding: 24px; border-radius: 8px; width: 320px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 12px;
+    }
+    .modal-content h3 { margin-bottom: 8px; color: #1e293b; font-size: 18px; text-align: center; }
+    .modal-content input {
+      padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; width: 100%;
+    }
+    .modal-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .modal-actions button { flex: 1; justify-content: center; }
+    .toggle-auth-mode { font-size: 12px; color: #2563eb; text-align: center; cursor: pointer; text-decoration: underline; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -61,9 +81,10 @@
   <!-- 頂部功能工具列 -->
   <div id="toolbar">
     <div class="btn-group">
-      <strong style="font-size: 16px; margin-right: 10px; color: #38bdf8;">📊 雲端試算表系統</strong>
+      <strong style="font-size: 16px; margin-right: 10px; color: #38bdf8;">📈 專業產出分析系統</strong>
       
-      <!-- Excel 檔案操作 -->
+      <button onclick="loadTemplate()" class="btn-warning">📋 載入預設分析範本</button>
+      
       <label class="btn-label">
         📂 匯入 Excel
         <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
@@ -78,7 +99,7 @@
     <!-- 使用者登入狀態與控制 -->
     <div class="btn-group">
       <span id="user-info">未登入（僅能預覽，寫入請先登入）</span>
-      <button id="btn-login" onclick="loginWithGoogle()">🔑 Google 登入</button>
+      <button id="btn-login" onclick="openAuthModal()">🔑 帳號登入/註冊</button>
       <button id="btn-logout" onclick="logout()" class="btn-danger" style="display: none;">🚪 登出</button>
     </div>
   </div>
@@ -86,32 +107,56 @@
   <!-- Luckysheet 容器 -->
   <div id="luckysheet"></div>
 
-  <!-- Firebase v9 SDK (Modules) -->
+  <!-- 電子郵件/密碼 登入與註冊彈窗 -->
+  <div id="auth-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 id="auth-title">使用者登入</h3>
+      <input type="email" id="auth-email" placeholder="請輸入電子郵件 (Email)" autocomplete="email">
+      <input type="password" id="auth-password" placeholder="請輸入密碼" autocomplete="current-password">
+      
+      <div class="modal-actions">
+        <button id="auth-submit-btn" onclick="handleAuthSubmit()">登入</button>
+        <button onclick="closeAuthModal()" style="background-color: #64748b;">取消</button>
+      </div>
+      <div id="auth-toggle-btn" class="toggle-auth-mode" onclick="toggleAuthMode()">還沒有帳號？按此註冊</div>
+    </div>
+  </div>
+
+  <!-- Firebase v10 SDK (Modules) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
 
-    // ⚠️ 請替換為您自己的 Firebase 專案設定 ⚠️
+    // 您提供的 Firebase 專案金鑰設定
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyARVVuOfxBRx5BfQ0oEY7bfjuA_DmQQBV0",
+      authDomain: "mfgoutput.firebaseapp.com",
+      projectId: "mfgoutput",
+      storageBucket: "mfgoutput.firebasestorage.app",
+      messagingSenderId: "251776937464",
+      appId: "1:251776937464:web:63f08c2e1e9edaa2c5fa0d",
+      measurementId: "G-7TWGHT1FNZ"
     };
 
-    // 初始化 Firebase
+    // 初始化 Firebase Services
     const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const provider = new GoogleAuthProvider();
 
     let currentUser = null;
+    let isRegisterMode = false;
 
-    // 監聽登入狀態變更
-    onAuthStateChanged(auth, (user) => {
+    // 1. 監聽登入狀態變更
+    onAuthStateChanged(auth, async (user) => {
       currentUser = user;
       const userInfo = document.getElementById('user-info');
       const btnLogin = document.getElementById('btn-login');
@@ -120,11 +165,14 @@
       const btnLoad = document.getElementById('btn-load');
 
       if (user) {
-        userInfo.innerText = `👤 登入者：${user.displayName || user.email}`;
+        userInfo.innerText = `👤 登入者：${user.email}`;
         btnLogin.style.display = 'none';
         btnLogout.style.display = 'inline-block';
         btnSave.disabled = false;
         btnLoad.disabled = false;
+
+        // 登入後自動從雲端載入最新儲存數據
+        await window.loadFromFirebase(true);
       } else {
         userInfo.innerText = '未登入（登入後即可雲端儲存）';
         btnLogin.style.display = 'inline-block';
@@ -134,31 +182,73 @@
       }
     });
 
-    // Google 登入
-    window.loginWithGoogle = async () => {
-      try {
-        await signInWithPopup(auth, provider);
-        alert('登入成功！');
-      } catch (err) {
-        alert('登入失敗：' + err.message);
+    // 2. 開啟與關閉彈窗控制
+    window.openAuthModal = () => {
+      document.getElementById('auth-modal').style.display = 'flex';
+    };
+
+    window.closeAuthModal = () => {
+      document.getElementById('auth-modal').style.display = 'none';
+      document.getElementById('auth-email').value = '';
+      document.getElementById('auth-password').value = '';
+    };
+
+    // 切換 登入/註冊 模式
+    window.toggleAuthMode = () => {
+      isRegisterMode = !isRegisterMode;
+      const title = document.getElementById('auth-title');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      const toggleBtn = document.getElementById('auth-toggle-btn');
+
+      if (isRegisterMode) {
+        title.innerText = '註冊新帳號';
+        submitBtn.innerText = '註冊';
+        toggleBtn.innerText = '已有帳號？按此登入';
+      } else {
+        title.innerText = '使用者登入';
+        submitBtn.innerText = '登入';
+        toggleBtn.innerText = '還沒有帳號？按此註冊';
       }
     };
 
-    // 登出
+    // 3. 處理 Email / Password 登入與註冊提交
+    window.handleAuthSubmit = async () => {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value.trim();
+
+      if (!email || !password) {
+        return alert('請填寫電子郵件與密碼！');
+      }
+
+      try {
+        if (isRegisterMode) {
+          // 執行註冊
+          await createUserWithEmailAndPassword(auth, email, password);
+          alert('註冊成功並已自動登入！');
+        } else {
+          // 執行登入
+          await signInWithEmailAndPassword(auth, email, password);
+          alert('登入成功！');
+        }
+        closeAuthModal();
+      } catch (err) {
+        alert((isRegisterMode ? '註冊失敗：' : '登入失敗：') + err.message);
+      }
+    };
+
+    // 4. 登出
     window.logout = async () => {
       await signOut(auth);
       alert('已成功登出');
     };
 
-    // 儲存至 Firebase Firestore
+    // 5. 儲存至 Firebase Firestore
     window.saveToFirebase = async () => {
       if (!currentUser) return alert('請先登入系統！');
       
       try {
-        // 取得 Luckysheet 完整 JSON 資料 (包含所有 Sheet、公式、儲存格格式與顏色)
         const sheetData = luckysheet.getluckysheetfile();
         
-        // 儲存到 Firestore 'sheets' 集合中的 'default_sheet' 文件
         await setDoc(doc(db, "sheets", "default_sheet"), {
           data: JSON.stringify(sheetData),
           updatedAt: new Date().toISOString(),
@@ -172,9 +262,9 @@
       }
     };
 
-    // 從 Firebase 載入
-    window.loadFromFirebase = async () => {
-      if (!currentUser) return alert('請先登入系統！');
+    // 6. 從 Firebase Firestore 載入
+    window.loadFromFirebase = async (autoLoad = false) => {
+      if (!currentUser) return;
 
       try {
         const docRef = doc(db, "sheets", "default_sheet");
@@ -184,44 +274,115 @@
           const rawData = docSnap.data().data;
           const sheets = JSON.parse(rawData);
           
-          // 重新初始化 Luckysheet
-          luckysheet.destroy();
-          luckysheet.create({
-            container: 'luckysheet',
-            lang: 'zh',
-            data: sheets,
-            showinfobar: false
-          });
-          alert('🔄 已成功從雲端載入最新資料！');
-        } else {
+          initLuckysheet(sheets);
+          if (!autoLoad) alert('🔄 已成功從雲端載入最新資料！');
+        } else if (!autoLoad) {
           alert('雲端目前無儲存資料。');
         }
       } catch (err) {
         console.error(err);
-        alert('載入失敗：' + err.message);
+        if (!autoLoad) alert('載入失敗：' + err.message);
       }
     };
   </script>
 
-  <!-- Luckysheet 初始化與 Excel 匯入/匯出邏輯 -->
+  <!-- Luckysheet 初始化與模組邏輯 -->
   <script>
-    $(function () {
-      // 初始化 Luckysheet 預設空白表格
+    // 預設專業產出分析資料表結構
+    const defaultTemplateData = [{
+      name: "產出效能分析表",
+      color: "#2563eb",
+      status: 1,
+      order: 0,
+      row: 20,
+      column: 12,
+      config: {
+        columnlen: { 0: 100, 1: 140, 2: 100, 3: 100, 4: 100, 5: 110, 6: 120 }
+      },
+      celldata: [
+        // 標頭
+        { r: 0, c: 0, v: { v: "日期", m: "日期", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        { r: 0, c: 1, v: { v: "生產專案/產品", m: "生產專案/產品", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        { r: 0, c: 2, v: { v: "預計產量", m: "預計產量", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        { r: 0, c: 3, v: { v: "實際產量", m: "實際產量", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        { r: 0, c: 4, v: { v: "不良品數", m: "不良品數", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        { r: 0, c: 5, v: { v: "達成率 (%)", m: "達成率 (%)", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        { r: 0, c: 6, v: { v: "良品率 (%)", m: "良品率 (%)", bg: "#1e293b", fc: "#ffffff", bl: 1, ht: 1 } },
+        
+        // 範例資料 1
+        { r: 1, c: 0, v: { v: "2026-03-01", m: "2026-03-01" } },
+        { r: 1, c: 1, v: { v: "產品 A - 塑膠射出", m: "產品 A - 塑膠射出" } },
+        { r: 1, c: 2, v: { v: 1000, m: "1,000" } },
+        { r: 1, c: 3, v: { v: 950, m: "950" } },
+        { r: 1, c: 4, v: { v: 10, m: "10" } },
+        { r: 1, c: 5, v: { f: "=D2/C2", v: 0.95, m: "95.00%" } },
+        { r: 1, c: 6, v: { f: "=(D2-E2)/D2", v: 0.9895, m: "98.95%" } },
+
+        // 範例資料 2
+        { r: 2, c: 0, v: { v: "2026-03-02", m: "2026-03-02" } },
+        { r: 2, c: 1, v: { v: "產品 B - 3D 列印", m: "產品 B - 3D 列印" } },
+        { r: 2, c: 2, v: { v: 500, m: "500" } },
+        { r: 2, c: 3, v: { v: 520, m: "520" } },
+        { r: 2, c: 4, v: { v: 5, m: "5" } },
+        { r: 2, c: 5, v: { f: "=D3/C3", v: 1.04, m: "104.00%" } },
+        { r: 2, c: 6, v: { f: "=(D3-E3)/D3", v: 0.9904, m: "99.04%" } },
+
+        // 範例資料 3
+        { r: 3, c: 0, v: { v: "2026-03-03", m: "2026-03-03" } },
+        { r: 3, c: 1, v: { v: "產品 C - CNC 加工", m: "產品 C - CNC 加工" } },
+        { r: 3, c: 2, v: { v: 800, m: "800" } },
+        { r: 3, c: 3, v: { v: 760, m: "760" } },
+        { r: 3, c: 4, v: { v: 20, m: "20" } },
+        { r: 3, c: 5, v: { f: "=D4/C4", v: 0.95, m: "95.00%" } },
+        { r: 3, c: 6, v: { f: "=(D4-E4)/D4", v: 0.9737, m: "97.37%" } },
+
+        // 統計列
+        { r: 4, c: 0, v: { v: "總計 / 平均", m: "總計 / 平均", bl: 1, bg: "#f1f5f9" } },
+        { r: 4, c: 1, v: { v: "-", m: "-", bg: "#f1f5f9" } },
+        { r: 4, c: 2, v: { f: "=SUM(C2:C4)", bg: "#f1f5f9", bl: 1 } },
+        { r: 4, c: 3, v: { f: "=SUM(D2:D4)", bg: "#f1f5f9", bl: 1 } },
+        { r: 4, c: 4, v: { f: "=SUM(E2:E4)", bg: "#f1f5f9", bl: 1 } },
+        { r: 4, c: 5, v: { f: "=AVERAGE(F2:F4)", bg: "#f1f5f9", bl: 1 } },
+        { r: 4, c: 6, v: { f: "=AVERAGE(G2:G4)", bg: "#f1f5f9", bl: 1 } }
+      ]
+    }];
+
+    // 初始化 Luckysheet
+    function initLuckysheet(sheetData) {
+      luckysheet.destroy();
       luckysheet.create({
         container: 'luckysheet',
-        title: '雲端試算表',
+        title: '產出分析試算表',
         lang: 'zh',
         showinfobar: false,
         allowUpdate: true,
         enableAddRow: true,
         enableAddBackTop: true,
-        // 允許拖移與欄列操作
         enableRowColumnHeader: true,
-        sheetFormulaBar: true
+        sheetFormulaBar: true,
+
+        cellRightClickConfig: {
+          copy: true, copyAs: true, paste: true,
+          insertRow: true, insertColumn: true,
+          deleteRow: true, deleteColumn: true, deleteCell: true,
+          hideRow: true, hideColumn: true, rowHeight: true, columnWidth: true,
+          clear: true, matrix: true, sort: true, filter: true, chart: true, image: true, link: true, data: true, cellFormat: true
+        },
+        enableMove: true,
+        data: sheetData || defaultTemplateData
       });
+    }
+
+    function loadTemplate() {
+      if (confirm('確定要載入預設產出分析範本嗎？未儲存的變更將會被覆蓋。')) {
+        initLuckysheet(defaultTemplateData);
+      }
+    }
+
+    $(function () {
+      initLuckysheet(defaultTemplateData);
     });
 
-    // 讀取/匯入 本地 Excel 檔 (.xlsx)
     document.getElementById('upload-excel').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -230,50 +391,30 @@
       reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        
         const newSheets = [];
 
         workbook.SheetNames.forEach((sheetName, index) => {
           const worksheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          // 轉換為 Luckysheet celery 格式
           const celldata = [];
+          
           json.forEach((row, r) => {
             row.forEach((val, c) => {
               if (val !== null && val !== undefined) {
-                celldata.push({
-                  r: r,
-                  c: c,
-                  v: { v: val, m: String(val) }
-                });
+                celldata.push({ r: r, c: c, v: { v: val, m: String(val) } });
               }
             });
           });
 
-          newSheets.push({
-            name: sheetName,
-            status: index === 0 ? 1 : 0,
-            order: index,
-            celldata: celldata
-          });
+          newSheets.push({ name: sheetName, status: index === 0 ? 1 : 0, order: index, celldata: celldata });
         });
 
-        // 銷毀現有並載入新數據
-        luckysheet.destroy();
-        luckysheet.create({
-          container: 'luckysheet',
-          lang: 'zh',
-          data: newSheets,
-          showinfobar: false
-        });
-
+        initLuckysheet(newSheets);
         alert('成功匯入 Excel 檔案！');
       };
       reader.readAsArrayBuffer(file);
     });
 
-    // 匯出當前表格為 Excel (.xlsx) 檔案
     function exportToExcel() {
       const sheets = luckysheet.getluckysheetfile();
       const wb = XLSX.utils.book_new();
@@ -298,7 +439,7 @@
         XLSX.utils.book_append_sheet(wb, ws, sheet.name);
       });
 
-      XLSX.writeFile(wb, `雲端匯出試算表_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.writeFile(wb, `產出效能分析表_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
   </script>
 </body>
