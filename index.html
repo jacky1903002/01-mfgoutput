@@ -176,10 +176,10 @@
       border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .chart-header { display: flex; justify-content: space-between; align-items: center; }
-    .chart-title { color: #0f172a; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+    .chart-title { color: #0f172a; font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 6px; justify-content: center; width: 100%; }
     
     .chart-wrapper {
-      position: relative; width: 100%; height: 320px;
+      position: relative; width: 100%; height: 380px;
       background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;
     }
     .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
@@ -356,8 +356,16 @@
       { key: "item_10", title: "加班費/產值" }
     ];
 
+    const defaultColumns3 = [
+      { key: "month", title: "月份" },
+      { key: "composite", title: "複材" },
+      { key: "graphite_val", title: "石墨產值" },
+      { key: "composite_plus_graphite", title: "複材加石墨" }
+    ];
+
     window.sheets = [
-      { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] }
+      { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] },
+      { id: "s3", name: "複材占比", columns: JSON.parse(JSON.stringify(defaultColumns3)), data: [] }
     ];
     window.activeSheetId = "s1";
     window.logoUrl = "";
@@ -368,6 +376,10 @@
       { id: "s1_chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
       { id: "s1_chart_3", title: "📊 刀具費/產值 分析圖", type: "line", dataKey: "刀具費/產值" },
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
+    ];
+
+    window.sheet3ChartConfigs = [
+      { id: "s3_chart_1", title: "複材佔石墨產值", type: "triple_line" }
     ];
 
     window.saveToFirebase = async function() {
@@ -440,7 +452,7 @@
           let parsedColumns = [];
           let parsedData = [];
 
-          if (firstCell === "項目" || firstCell.includes("項目")) {
+          if (firstCell === "項目" || firstCell.includes("項目") || firstCell === "月份") {
             const itemNames = [];
             for (let i = 1; i < rawData.length; i++) {
               const name = rawData[i][0] ? String(rawData[i][0]).trim() : `欄位_${i}`;
@@ -448,7 +460,7 @@
             }
 
             parsedColumns = [
-              { key: "month", title: "月份/時間" },
+              { key: "month", title: "月份" },
               ...itemNames.map((name, idx) => ({ key: `item_${idx}`, title: name }))
             ];
 
@@ -700,6 +712,7 @@
       }
 
       const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
+      const isThirdSheet = (currentSheet.id === "s3" || currentSheet.name === "複材占比");
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `
@@ -726,6 +739,28 @@
         });
 
         html += `</div>`;
+      } else if (isThirdSheet && currentSheet.data && currentSheet.data.length > 0) {
+        html += `
+          <div class="charts-grid" style="margin-top: 20px;">
+        `;
+
+        window.sheet3ChartConfigs.forEach(cp => {
+          html += `
+            <div class="chart-page" id="export-area-${cp.id}">
+              <div class="chart-header" style="position: relative;">
+                <div class="chart-title">${cp.title}</div>
+                <button class="btn btn-success" style="position: absolute; right: 0; top: 0;" onclick="exportChartToPNG('${cp.id}', '${cp.title}')">
+                  <i class="fa-solid fa-download"></i> 匯出 PNG
+                </button>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="canvas-${cp.id}"></canvas>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
       }
 
       container.innerHTML = html;
@@ -733,6 +768,10 @@
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => {
           window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
+        }, 100);
+      } else if (isThirdSheet && currentSheet.data && currentSheet.data.length > 0) {
+        setTimeout(() => {
+          window.sheet3ChartConfigs.forEach(cp => buildChartSheet3(cp, currentSheet));
         }, 100);
       }
     }
@@ -805,6 +844,92 @@
 
       window.chartInstances[config.id] = new Chart(canvas, {
         type: config.type === "combo" ? 'bar' : 'line',
+        data: chartData,
+        options: options
+      });
+    }
+
+    function buildChartSheet3(config, sheet) {
+      const canvas = document.getElementById(`canvas-${config.id}`);
+      if (!canvas) return;
+
+      if (window.chartInstances[config.id]) {
+        window.chartInstances[config.id].destroy();
+      }
+
+      const labels = sheet.data.map(d => d.month || '');
+      const cols = sheet.columns;
+
+      const keyComposite = findColKeyByTitle(cols, "複材");
+      const keyGraphite = findColKeyByTitle(cols, "石墨產值");
+      const keyTotal = findColKeyByTitle(cols, "複材加石墨");
+
+      const chartData = {
+        labels: labels,
+        datasets: [
+          {
+            label: '複材',
+            data: sheet.data.map(d => parseNum(d[keyComposite])),
+            borderColor: '#6b21a8',
+            backgroundColor: '#6b21a8',
+            pointStyle: 'rect',
+            pointRadius: 4,
+            borderWidth: 2,
+            tension: 0.1
+          },
+          {
+            label: '石墨產值',
+            data: sheet.data.map(d => parseNum(d[keyGraphite])),
+            borderColor: '#dc2626',
+            backgroundColor: '#dc2626',
+            pointStyle: 'triangle',
+            pointRadius: 5,
+            borderWidth: 2,
+            tension: 0.1
+          },
+          {
+            label: '複材加石墨',
+            data: sheet.data.map(d => parseNum(d[keyTotal])),
+            borderColor: '#2563eb',
+            backgroundColor: '#2563eb',
+            pointStyle: 'circle',
+            pointRadius: 4,
+            borderWidth: 2,
+            tension: 0.1
+          }
+        ]
+      };
+
+      const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { usePointStyle: true, boxWidth: 8 }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'YYMM', font: { size: 12 } }
+          },
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: { display: true, text: 'NT$', font: { size: 12 } },
+            ticks: {
+              callback: function(value) {
+                return value.toLocaleString();
+              }
+            }
+          }
+        }
+      };
+
+      window.chartInstances[config.id] = new Chart(canvas, {
+        type: 'line',
         data: chartData,
         options: options
       });
