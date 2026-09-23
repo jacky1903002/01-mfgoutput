@@ -42,8 +42,10 @@
       display: flex; align-items: center; justify-content: center; color: #fff;
     }
     .badge-enterprise { background: #4f46e5; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    .badge-time { background: #f1f5f9; color: #0284c7; font-size: 11px; padding: 2px 8px; border-radius: 12px; border: 1px solid #cbd5e1; }
     h1.system-title { color: #0f172a; font-size: 20px; font-weight: 800; }
+
+    .user-profile-bar { display: flex; align-items: center; gap: 10px; }
+    .user-name { font-size: 13px; font-weight: 600; color: #334155; display: none; }
 
     .btn {
       background-color: #0284c7; color: #fff; border: none; padding: 6px 14px;
@@ -55,6 +57,9 @@
     .btn-light:hover { background-color: #f8fafc; color: #0f172a; }
     .btn-success { background-color: #10b981; color: #fff; }
     .btn-success:hover { background-color: #059669; }
+    .btn-danger { background-color: #ef4444; color: #fff; }
+    .btn-danger:hover { background-color: #dc2626; }
+    .btn:disabled, .btn-light.disabled { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; }
 
     .nav-tabs-container {
       background-color: #ffffff; padding: 10px 24px 0 24px;
@@ -110,6 +115,23 @@
     .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
     .status-badge.loading { background: #fef3c7; color: #d97706; }
     .status-badge.success { background: #dcfce7; color: #15803d; }
+    .status-badge.read-only { background: #e2e8f0; color: #475569; }
+
+    /* 登入彈窗視窗 CSS */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.5); z-index: 1000; justify-content: center; align-items: center;
+    }
+    .modal-card {
+      background: #ffffff; padding: 24px; border-radius: 8px; width: 320px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 14px;
+    }
+    .modal-title { font-size: 16px; font-weight: bold; color: #0f172a; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 12px; color: #64748b; }
+    .form-group input { padding: 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; }
+    .form-group input:focus { border-color: #0284c7; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -125,13 +147,21 @@
         <h1 class="system-title">MFG Output Analysis</h1>
       </div>
     </div>
+
+    <!-- 登入狀態與控制區塊 -->
+    <div class="user-profile-bar">
+      <span id="user-name" class="user-name"><i class="fa-solid fa-user-check"></i> <span id="user-email-text"></span></span>
+      <button id="auth-btn" class="btn btn-light">
+        <i class="fa-solid fa-right-to-bracket"></i> <span id="auth-btn-text">管理員登入</span>
+      </button>
+    </div>
   </header>
 
   <div class="nav-tabs-container">
     <div class="sheet-tabs" id="sheet-tabs-list"></div>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <button class="btn-add-tab" onclick="addNewSheet()"><i class="fa-solid fa-plus"></i> 新增工作表</button>
-      <label class="btn btn-light" style="cursor:pointer; margin-left: 6px;">
+      <button id="btn-add-tab" class="btn-add-tab" onclick="addNewSheet()"><i class="fa-solid fa-plus"></i> 新增工作表</button>
+      <label id="btn-import-excel" class="btn btn-light" style="cursor:pointer; margin-left: 6px;">
         <i class="fa-solid fa-file-import"></i> 匯入 Excel 覆蓋
         <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
       </label>
@@ -140,13 +170,32 @@
 
   <div class="content-container" id="main-content"></div>
 
+  <!-- 管理員登入 Modal 彈窗 -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-card">
+      <div class="modal-title"><i class="fa-solid fa-lock"></i> 管理員登入</div>
+      <div class="form-group">
+        <label>電子郵件 (Email)</label>
+        <input type="email" id="login-email" placeholder="n1693131@gmail.com" />
+      </div>
+      <div class="form-group">
+        <label>密碼 (Password)</label>
+        <input type="password" id="login-password" placeholder="請輸入密碼" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-light" onclick="closeLoginModal()">取消</button>
+        <button class="btn" id="do-login-btn">登入</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 引入 Firebase SDK (v10) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // 您提供之 Firebase Config 金鑰設定
     const firebaseConfig = {
       apiKey: "AIzaSyARVVuOfxBRx5BfQ0oEY7bfjuA_DmQQBV0",
       authDomain: "mfgoutput.firebaseapp.com",
@@ -157,11 +206,80 @@
       measurementId: "G-7TWGHT1FNZ"
     };
 
-    // 初始化 Firebase 與 Analytics
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getFirestore(app);
+    const auth = getAuth(app);
     const docRef = doc(db, "mfg_data", "main_config");
+
+    window.currentUser = null;
+
+    // 監聽登入狀態改變
+    onAuthStateChanged(auth, (user) => {
+      window.currentUser = user;
+      const authBtn = document.getElementById('auth-btn');
+      const authBtnText = document.getElementById('auth-btn-text');
+      const name = document.getElementById('user-name');
+      const emailText = document.getElementById('user-email-text');
+      const addBtn = document.getElementById('btn-add-tab');
+      const importBtn = document.getElementById('btn-import-excel');
+
+      if (user) {
+        // 已登入
+        authBtnText.innerText = "登出";
+        authBtn.className = "btn btn-danger";
+        emailText.innerText = user.email;
+        name.style.display = "inline-block";
+
+        addBtn.disabled = false;
+        importBtn.classList.remove('disabled');
+      } else {
+        // 未登入
+        authBtnText.innerText = "管理員登入";
+        authBtn.className = "btn btn-light";
+        name.style.display = "none";
+
+        addBtn.disabled = true;
+        importBtn.classList.add('disabled');
+      }
+      
+      window.renderTabs();
+      if (window.activeTabId && !window.activeTabId.startsWith('chart_')) {
+        window.renderTable(document.getElementById('main-content'));
+      }
+    });
+
+    // 點擊右上角控制按鈕 (開啟彈窗或登出)
+    document.getElementById('auth-btn').addEventListener('click', () => {
+      if (window.currentUser) {
+        signOut(auth).then(() => alert('已成功登出！'));
+      } else {
+        document.getElementById('login-modal').style.display = 'flex';
+      }
+    });
+
+    // 執行 Email / Password 登入
+    document.getElementById('do-login-btn').addEventListener('click', () => {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!email || !password) return alert('請輸入 Email 與密碼！');
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          window.closeLoginModal();
+          alert('登入成功！已解鎖編輯權限。');
+        })
+        .catch(error => {
+          console.error("登入失敗:", error);
+          alert('登入失敗：' + error.message);
+        });
+    });
+
+    window.closeLoginModal = function() {
+      document.getElementById('login-modal').style.display = 'none';
+      document.getElementById('login-password').value = '';
+    };
 
     // 全域變數
     window.columns = [
@@ -189,6 +307,11 @@
 
     // 同步儲存至 Firestore
     window.saveToFirebase = async function() {
+      if (!window.currentUser) {
+        alert("權限不足！請點擊右上角「管理員登入」後再儲存修改。");
+        return;
+      }
+
       try {
         const statusEl = document.getElementById('firebase-status');
         if (statusEl) { statusEl.className = 'status-badge loading'; statusEl.innerText = '● Firebase 儲存中...'; }
@@ -202,14 +325,17 @@
         if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
       } catch (e) {
         console.error("Firebase 寫入失敗:", e);
-        alert("資料同步失敗，請確認 Firestore 規則（Rules）是否已開啟讀寫權限！");
+        alert("資料同步失敗，請確定是否已使用具備修改權限的帳號登入！");
       }
     };
 
     // 即時監聽 Firestore 資料更新
     onSnapshot(docRef, (docSnap) => {
       const statusEl = document.getElementById('firebase-status');
-      if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
+      if (statusEl) { 
+        statusEl.className = window.currentUser ? 'status-badge success' : 'status-badge read-only'; 
+        statusEl.innerText = window.currentUser ? '● Firebase 已連線 (管理員權限)' : '● Firebase 唯讀模式 (未登入)'; 
+      }
 
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -219,14 +345,12 @@
       
       window.renderTabs();
       window.switchTab(window.activeTabId);
-    }, (error) => {
-      console.error("Firebase 監聽錯誤：", error);
-      const statusEl = document.getElementById('firebase-status');
-      if (statusEl) { statusEl.className = 'status-badge loading'; statusEl.innerText = '● Firebase 存取權限受限'; }
     });
 
     // Excel 匯入處理
     document.getElementById('upload-excel').addEventListener('change', function(e) {
+      if (!window.currentUser) return alert('請登入帳號後再執行匯入！');
+      
       const file = e.target.files[0];
       if (!file) return;
 
@@ -281,7 +405,6 @@
           const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
           if (curSheet) curSheet.data = parsedData;
 
-          // 匯入後同步儲存至 Firebase
           window.saveToFirebase();
 
         } catch (err) {
@@ -295,19 +418,20 @@
   </script>
 
   <script>
-    // 介面與圖表渲染邏輯
     function renderTabs() {
       const container = document.getElementById('sheet-tabs-list');
       if (!container) return;
       let html = '';
 
+      const isLogined = !!window.currentUser;
+
       sheets.forEach(s => {
         const isActive = s.id === activeTabId ? 'active' : '';
         html += `
-          <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')" ondoubleclick="editSheetName('${s.id}')">
+          <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')" ${isLogined ? `ondoubleclick="editSheetName('${s.id}')"` : ''}>
             <i class="fa-solid fa-table"></i>
             <span id="sheet-title-${s.id}">${s.name}</span>
-            ${sheets.length > 1 ? `<i class="fa-solid fa-xmark tab-delete-btn" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
+            ${(sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
           </div>
         `;
       });
@@ -337,6 +461,7 @@
     }
 
     function addNewSheet() {
+      if (!window.currentUser) return alert('請登入管理員帳號後再進行編輯！');
       const newId = `s_${Date.now()}`;
       const newName = `工作表 ${sheets.length + 1}`;
       sheets.push({ id: newId, name: newName, data: [] });
@@ -346,6 +471,7 @@
 
     function deleteSheet(e, sheetId) {
       e.stopPropagation();
+      if (!window.currentUser) return alert('請登入管理員帳號後再進行編輯！');
       if (sheets.length <= 1) return alert('至少需保留一個工作表！');
       if (confirm('確定要刪除此工作表嗎？')) {
         sheets = sheets.filter(s => s.id !== sheetId);
@@ -359,6 +485,7 @@
     }
 
     function editSheetName(sheetId) {
+      if (!window.currentUser) return;
       const titleSpan = document.getElementById(`sheet-title-${sheetId}`);
       if (!titleSpan) return;
       const currentName = titleSpan.innerText;
@@ -385,9 +512,11 @@
     function renderTable(container) {
       const currentSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
       if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 60px; color:#94a3b8; background:#fff; border-radius:8px;">目前工作表無資料，請點擊右上角「匯入 Excel 覆蓋」或先於 Firebase Console 建置預設數據。</div>`;
+        container.innerHTML = `<div style="text-align:center; padding: 60px; color:#94a3b8; background:#fff; border-radius:8px;">目前工作表無資料。${window.currentUser ? '請點擊右上角「匯入 Excel 覆蓋」' : '（請點擊右上角「管理員登入」以匯入或修改資料）'}</div>`;
         return;
       }
+
+      const isLogined = !!window.currentUser;
 
       let html = `<table class="custom-table"><thead><tr>`;
       columns.forEach(col => { html += `<th>${col.title}</th>`; });
@@ -395,7 +524,7 @@
 
       currentSheet.data.forEach(row => {
         html += `<tr>`;
-        columns.forEach(col => { html += `<td contenteditable="true">${row[col.key] || '-'}</td>`; });
+        columns.forEach(col => { html += `<td ${isLogined ? 'contenteditable="true"' : ''}>${row[col.key] || '-'}</td>`; });
         html += `</tr>`;
       });
       html += `</tbody></table>`;
