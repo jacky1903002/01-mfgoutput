@@ -280,12 +280,6 @@
       text-align: right;
     }
 
-    .status-ongoing { color: #38bdf8; }
-    .status-notstart { color: #94a3b8; }
-
-    .action-link { color: #64748b; cursor: pointer; }
-    .action-link:hover { color: #ef4444; }
-
     /* Modal */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -307,7 +301,7 @@
   <header>
     <div class="header-title-group">
       <div class="logo-container" id="logo-box">
-        <i class="fa-solid fa-chart-line" id="default-logo-icon"></i>
+        <i class="fa-solid fa-chart-line"></i>
       </div>
       <div>
         <div style="display:flex; align-items:center; gap:8px;">
@@ -368,15 +362,14 @@
         <button id="auth-submit-btn" class="btn" style="flex:1; justify-content:center;" onclick="handleAuthSubmit()">登入</button>
         <button class="btn btn-dark" style="flex:1; justify-content:center;" onclick="closeAuthModal()">取消</button>
       </div>
-      <div style="font-size:12px; color:#38bdf8; text-align:center; cursor:pointer;" onclick="toggleAuthMode()" id="auth-toggle-btn">還沒有帳號？按此註冊</div>
     </div>
   </div>
 
   <!-- Firebase Modules -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyARVVuOfxBRx5BfQ0oEY7bfjuA_DmQQBV0",
@@ -443,7 +436,6 @@
 
   <!-- 核心數據邏輯 -->
   <script>
-    // 預設欄位定義
     let columns = [
       { key: "pinNo", title: "品號" },
       { key: "itemNo", title: "貨號" },
@@ -458,7 +450,6 @@
       { key: "remark", title: "備註" }
     ];
 
-    // 多工作表資料結構
     let sheets = [
       { id: "s1", name: "工程及製造追蹤項目", data: getInitialRows() },
       { id: "s2", name: "採購追蹤項目", data: getInitialRows().slice(0, 4) },
@@ -469,14 +460,10 @@
     function getInitialRows() {
       return [
         { pinNo: "FVSE-0036-4", itemNo: "10091-VWNE000", poNo: "50091-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" },
-        { pinNo: "FVSE-0525-4", itemNo: "10021-VWNE000", poNo: "50021-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" },
-        { pinNo: "FVSE-0032-4", itemNo: "14967-VWNE001", poNo: "54967-0WNG000", drawProgress: 100, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "-" },
-        { pinNo: "FVSE-0068", itemNo: "10014-VWTE000", poNo: "50014-0WTE000", drawProgress: 100, kApp: "NA", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "無須檢具" },
-        { pinNo: "FV80-0433", itemNo: "10207-FWTE000", poNo: "50207-0WTE000", drawProgress: 100, kApp: "-", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "未開始", remark: "-" }
+        { pinNo: "FVSE-0525-4", itemNo: "10021-VWNE000", poNo: "50021-0WNE000", drawProgress: 100, kApp: "Y", checkProgress: 0, startDate: "2026-03-01", endDate: "2026-12-31", progress: 70, status: "進行中", remark: "-" }
       ];
     }
 
-    // 套用圖片 Logo
     function applyLogoUrl() {
       const url = document.getElementById('logo-url-input').value.trim();
       const logoBox = document.getElementById('logo-box');
@@ -487,7 +474,6 @@
       }
     }
 
-    // 1. 工作表 (Tabs) 渲染與獨立修改名稱
     function renderTabs() {
       const container = document.getElementById('sheet-tabs-list');
       let html = '';
@@ -507,7 +493,7 @@
     }
 
     function editSheetName(e, id) {
-      e.stopPropagation(); // 阻止切換 Tab 事件
+      e.stopPropagation();
       const sheet = sheets.find(s => s.id === id);
       if (!sheet) return;
       const newName = prompt("請輸入新的工作表名稱：", sheet.name);
@@ -554,12 +540,10 @@
       }
     }
 
-    // 2. 表格渲染與欄/列修改
     function renderTable() {
       const currentSheet = sheets.find(s => s.id === activeSheetId);
       if (!currentSheet) return;
 
-      // 繪製表頭 (Header)
       const thead = document.getElementById('table-head');
       let headHtml = '<tr><th style="width: 30px;">:::</th>';
       columns.forEach((col, cIdx) => {
@@ -573,7 +557,6 @@
       headHtml += '<th>操作</th></tr>';
       thead.innerHTML = headHtml;
 
-      // 繪製資料 (Body)
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
       
@@ -593,13 +576,11 @@
           const val = row[col.key] !== undefined ? row[col.key] : '-';
           
           if (col.isProgress) {
-            // 進度條特別呈現 (點擊可編輯數值)
             rowHtml += `
               <td onclick="editProgressValue(${rIdx}, '${col.key}', ${val})" style="cursor:pointer;" title="點擊修改進度數值">
                 ${renderProgress(val)}
               </td>`;
           } else {
-            // 一般欄位直接開通可打字屬性 (contenteditable)
             rowHtml += `
               <td contenteditable="true" 
                   onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)"
@@ -615,7 +596,6 @@
       });
     }
 
-    // 欄位標題修改
     function editColumnTitle(cIdx) {
       const col = columns[cIdx];
       const newTitle = prompt("請輸入新的欄位名稱：", col.title);
@@ -625,7 +605,6 @@
       }
     }
 
-    // 單元格內容直接失焦更新 (onblur)
     function updateCellData(rIdx, key, text) {
       const currentSheet = sheets.find(s => s.id === activeSheetId);
       if (currentSheet && currentSheet.data[rIdx]) {
@@ -633,7 +612,6 @@
       }
     }
 
-    // 進度數值專用修改
     function editProgressValue(rIdx, key, currentVal) {
       const newVal = prompt("請輸入新的進度數值 (0-100)：", currentVal);
       if (newVal !== null) {
@@ -657,7 +635,6 @@
         </div>`;
     }
 
-    // 欄/列 增刪
     function addColumn() {
       const name = prompt("請輸入新自訂欄位名稱：");
       if (!name) return;
@@ -688,7 +665,6 @@
       renderTable();
     }
 
-    // 拖曳排序 (Drag & Drop)
     let dragSrcIndex = null;
     function handleDragStart(e) {
       dragSrcIndex = this.dataset.index;
@@ -714,7 +690,7 @@
       this.classList.remove('dragging');
     }
 
-    // 匯出 Excel
+    /* 匯出 Excel */
     function exportExcel() {
       const currentSheet = sheets.find(s => s.id === activeSheetId);
       const ws = XLSX.utils.json_to_sheet(currentSheet.data);
@@ -722,6 +698,41 @@
       XLSX.utils.book_append_sheet(wb, ws, currentSheet.name);
       XLSX.writeFile(wb, `${currentSheet.name}_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
+
+    /* 匯入 Excel 監聽事件 */
+    document.getElementById('upload-excel').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+          if (jsonData.length === 0) {
+            alert('匯入的 Excel 檔案中沒有數據！');
+            return;
+          }
+
+          // 將匯入的資料載入至當前選取的工作表中
+          const currentSheet = sheets.find(s => s.id === activeSheetId);
+          if (currentSheet) {
+            currentSheet.data = jsonData;
+            renderTable();
+            alert(`成功匯入 ${jsonData.length} 筆資料至「${currentSheet.name}」！`);
+          }
+        } catch (err) {
+          alert('解析 Excel 檔案失敗，請確保檔案格式正確！');
+        }
+        // 重置 input 以方便重複選取同一檔案
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    });
 
     // 頁面初始化
     renderTabs();
