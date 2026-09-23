@@ -39,7 +39,7 @@
     .header-title-group { display: flex; align-items: center; gap: 12px; }
     .logo-container {
       width: 36px; height: 36px; background: #0284c7; border-radius: 6px;
-      display: flex; align-items: center; justify-content: center; color: #fff; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; color: #fff;
     }
     .badge-enterprise { background: #4f46e5; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     .badge-time { background: #1e293b; color: #38bdf8; font-size: 11px; padding: 2px 8px; border-radius: 12px; border: 1px solid #0284c7; }
@@ -63,8 +63,8 @@
     }
     .sheet-tabs { display: flex; gap: 6px; align-items: center; overflow-x: auto; }
     .tab-item {
-      background: #151e3d; color: #94a3b8; padding: 6px 14px; border-radius: 6px 6px 0 0;
-      font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+      background: #151e3d; color: #94a3b8; padding: 8px 16px; border-radius: 6px 6px 0 0;
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;
       border: 1px solid #1e293b; border-bottom: none; white-space: nowrap; user-select: none;
     }
     .tab-item.active { background: #0284c7; color: #fff; font-weight: bold; }
@@ -82,13 +82,13 @@
     /* 表格樣式 */
     table.custom-table { width: 100%; border-collapse: collapse; font-size: 12px; color: #cbd5e1; text-align: left; }
     table.custom-table th {
-      background-color: #0f1938; color: #94a3b8; padding: 12px 8px; border-bottom: 1px solid #1e293b;
+      background-color: #0f1938; color: #38bdf8; padding: 12px 8px; border-bottom: 1px solid #1e293b;
       white-space: nowrap; font-weight: 600; position: sticky; top: 0; z-index: 10;
     }
     table.custom-table td { padding: 10px 8px; border-bottom: 1px solid #151f38; white-space: nowrap; }
     table.custom-table tr:hover { background-color: #111c3e; }
 
-    /* 圖表專用頁面容器 (一張圖一個頁面) */
+    /* 圖表專用頁面容器 */
     .chart-page {
       display: flex; flex-direction: column; gap: 16px; background: #0f172a; padding: 24px;
       border-radius: 8px; border: 1px solid #1e293b; height: 100%;
@@ -119,46 +119,60 @@
     <div class="sheet-tabs" id="sheet-tabs-list"></div>
   </div>
 
-  <!-- 功能操作列 (僅表格頁顯示) -->
+  <!-- 功能操作列 -->
   <div class="action-bar" id="action-bar">
-    <button class="btn btn-dark" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> 匯出 Excel</button>
     <label class="btn btn-dark" style="cursor:pointer;">
-      <i class="fa-solid fa-file-import"></i> 匯入 Excel
+      <i class="fa-solid fa-file-import"></i> 匯入 Excel 檔案
       <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
     </label>
   </div>
 
-  <!-- 主要顯示區 (表格 / 各圖表頁面) -->
+  <!-- 主要顯示區 -->
   <div class="content-container" id="main-content"></div>
 
-  <!-- 腳本區域 -->
   <script>
-    // 預設欄位與資料結構
-    let columns = [];
-    let sheets = [{ id: "s1", name: "數據資料表", data: [] }];
-    let activeTabId = "s1"; // 可為工作表ID或圖表分頁ID
-    let chartInstances = {}; // 存放 Chart.js 實體
-
-    // 定義 4 個圖表頁面資訊
-    const chartPages = [
-      { id: "chart_1", name: "📈 產出市值與數量趨勢圖", title: "合計產出市值(NT$) / 產出數量(PCS)", type: "combo" },[cite: 7]
-      { id: "chart_2", name: "📊 報廢/產值分析圖", title: "報廢/產值 (2023~2026)", type: "line", dataKey: "報廢/產值" },[cite: 7]
-      { id: "chart_3", name: "📊 刀具費/產值分析圖", title: "刀具費/產值 (2023~2026)", type: "line", dataKey: "刀具費/產值" },[cite: 7]
-      { id: "chart_4", name: "📊 加班費/產值分析圖", title: "加班費/產值 (2023~2026)(未定)", type: "line", dataKey: "加班費/產值" }[cite: 7]
+    // 定義欄位與資料範例（防呆機制，若無數據時自動載入）
+    let columns = [
+      { key: "month", title: "月份/時間" },
+      { key: "item_0", title: "石墨產出市值(NT$)" },
+      { key: "item_1", title: "石墨產出數量(PCS)" },
+      { key: "item_6", title: "合計產出市值(NT$)" },
+      { key: "item_7", title: "合計產出數量(PCS)" },
+      { key: "item_12", title: "刀具費/產值" },
+      { key: "item_14", title: "報廢/產值" },
+      { key: "item_10", title: "加班費/產值" }
     ];
 
-    // 初始化與渲染 Tab 分頁
+    let sheets = [{
+      id: "s1",
+      name: "數據資料表",
+      data: [
+        { month: "Jan-20", item_0: "9,680,084", item_1: "17,115", item_6: "67,405,193", item_7: "65,926", item_12: "0.016", item_14: "0.003", item_10: "0.028" },
+        { month: "Feb-20", item_0: "8,975,302", item_1: "16,664", item_6: "55,081,463", item_7: "53,640", item_12: "0.023", item_14: "0.001", item_10: "0.026" },
+        { month: "Mar-20", item_0: "13,154,466", item_1: "24,144", item_6: "88,003,469", item_7: "93,538", item_12: "0.020", item_14: "0.003", item_10: "0.027" }
+      ]
+    }];
+
+    let activeTabId = "s1";
+    let chartInstances = {};
+
+    const chartPages = [
+      { id: "chart_1", name: "📈 產出市值與數量趨勢圖", title: "合計產出市值(NT$) / 產出數量(PCS)", type: "combo" },
+      { id: "chart_2", name: "📊 報廢/產值分析圖", title: "報廢/產值 (2023~2026)", type: "line", dataKey: "報廢/產值" },
+      { id: "chart_3", name: "📊 刀具費/產值分析圖", title: "刀具費/產值 (2023~2026)", type: "line", dataKey: "刀具費/產值" },
+      { id: "chart_4", name: "📊 加班費/產值分析圖", title: "加班費/產值 (2023~2026)(未定)", type: "line", dataKey: "加班費/產值" }
+    ];
+
     function renderTabs() {
       const container = document.getElementById('sheet-tabs-list');
+      if (!container) return;
       let html = '';
       
-      // 資料工作表 Tab
       sheets.forEach(s => {
         const isActive = s.id === activeTabId ? 'active' : '';
         html += `<div class="tab-item ${isActive}" onclick="switchTab('${s.id}')"><i class="fa-solid fa-table"></i> ${s.name}</div>`;
       });
 
-      // 4 個圖表 Tab
       chartPages.forEach(cp => {
         const isActive = cp.id === activeTabId ? 'active' : '';
         html += `<div class="tab-item chart-tab ${isActive}" onclick="switchTab('${cp.id}')">${cp.name}</div>`;
@@ -167,7 +181,6 @@
       container.innerHTML = html;
     }
 
-    // 切換頁面 (表格或特定圖表頁)
     function switchTab(tabId) {
       activeTabId = tabId;
       renderTabs();
@@ -176,19 +189,18 @@
       const container = document.getElementById('main-content');
 
       if (tabId.startsWith('chart_')) {
-        actionBar.style.display = 'none'; // 隱藏表格列
+        if (actionBar) actionBar.style.display = 'none';
         const chartConfig = chartPages.find(c => c.id === tabId);
         renderSingleChartPage(container, chartConfig);
       } else {
-        actionBar.style.display = 'flex';
+        if (actionBar) actionBar.style.display = 'flex';
         renderTable(container);
       }
     }
 
-    // 渲染資料表格
     function renderTable(container) {
       const currentSheet = sheets.find(s => s.id === activeTabId) || sheets[0];
-      if (!currentSheet || currentSheet.data.length === 0) {
+      if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color:#64748b;">目前無資料，請點擊上方「匯入 Excel」選擇 Excel 檔案。</div>`;
         return;
       }
@@ -206,7 +218,6 @@
       container.innerHTML = html;
     }
 
-    // 渲染單一圖表頁面 (一頁一張圖)
     function renderSingleChartPage(container, chartConfig) {
       container.innerHTML = `
         <div class="chart-page" id="export-area-${chartConfig.id}">
@@ -222,13 +233,9 @@
         </div>
       `;
 
-      // 延遲繪製 Chart.js 以確保 Canvas 節點已建立
-      setTimeout(() => {
-        buildChart(chartConfig);
-      }, 50);
+      setTimeout(() => { buildChart(chartConfig); }, 100);
     }
 
-    // 建立 Chart.js 圖表
     function buildChart(chartConfig) {
       const canvas = document.getElementById(`canvas-${chartConfig.id}`);
       if (!canvas) return;
@@ -236,10 +243,8 @@
       const dataSheet = sheets[0].data;
       if (!dataSheet || dataSheet.length === 0) return;
 
-      // 提取 X 軸標籤 (月份/時間)[cite: 6, 7]
-      const labels = dataSheet.map(r => r.month || r.項目 || "");
+      const labels = dataSheet.map(r => r.month || "");
 
-      // 若原圖表實體存在，先銷毀避免重疊
       if (chartInstances[chartConfig.id]) {
         chartInstances[chartConfig.id].destroy();
       }
@@ -247,80 +252,44 @@
       const ctx = canvas.getContext('2d');
 
       if (chartConfig.type === "combo") {
-        // 圖表 1: 市值 (柱狀圖) + 數量 (折線圖) 雙 Y 軸[cite: 7]
-        const valMarket = dataSheet.map(r => parseNum(r['item_6'] || r['合計產出市值(NT$)'])); // 合計市值[cite: 6]
-        const valQty = dataSheet.map(r => parseNum(r['item_7'] || r['合計產出數量(PCS)']));    // 合計數量[cite: 6]
+        const valMarket = dataSheet.map(r => parseNum(findValByTitle(r, '合計產出市值')));
+        const valQty = dataSheet.map(r => parseNum(findValByTitle(r, '合計產出數量')));
 
         chartInstances[chartConfig.id] = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: labels,
             datasets: [
-              {
-                label: '合計產出市值(NT$)',
-                data: valMarket,
-                backgroundColor: 'rgba(56, 189, 248, 0.7)',
-                borderColor: '#38bdf8',
-                borderWidth: 1,
-                yAxisID: 'y'
-              },
-              {
-                label: '合計產出數量(PCS)',
-                data: valQty,
-                type: 'line',
-                borderColor: '#ef4444',
-                backgroundColor: '#ef4444',
-                borderWidth: 2,
-                pointRadius: 3,
-                yAxisID: 'y1'
-              }
+              { label: '合計產出市值(NT$)', data: valMarket, backgroundColor: 'rgba(56, 189, 248, 0.7)', borderColor: '#38bdf8', borderWidth: 1, yAxisID: 'y' },
+              { label: '合計產出數量(PCS)', data: valQty, type: 'line', borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, pointRadius: 4, yAxisID: 'y1' }
             ]
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-              y: { type: 'linear', display: true, position: 'left', ticks: { color: '#38bdf8' }, grid: { color: '#1e293b' } },
-              y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+              y: { type: 'linear', position: 'left', ticks: { color: '#38bdf8' }, grid: { color: '#1e293b' } },
+              y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
             },
             plugins: { legend: { labels: { color: '#cbd5e1' } } }
           }
         });
 
       } else {
-        // 圖表 2, 3, 4: 各項指標/產值 折線圖[cite: 7]
-        let lineValues = [];
-        dataSheet.forEach(r => {
-          // 動態匹配對應項目名稱
-          let val = 0;
-          Object.keys(r).forEach(k => {
-            if (columns.find(c => c.key === k && c.title.includes(chartConfig.dataKey))) {
-              val = parseNum(r[k]);
-            }
-          });
-          lineValues.push(val);
-        });
+        const lineValues = dataSheet.map(r => parseNum(findValByTitle(r, chartConfig.dataKey)));
 
         chartInstances[chartConfig.id] = new Chart(ctx, {
           type: 'line',
           data: {
             labels: labels,
             datasets: [{
-              label: chartConfig.title,
-              data: lineValues,
-              borderColor: '#ef4444',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderWidth: 2,
-              pointRadius: 4,
-              pointBackgroundColor: '#ffffff',
-              pointBorderColor: '#ef4444',
-              tension: 0.2
+              label: chartConfig.title, data: lineValues,
+              borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderWidth: 2, pointRadius: 4, tension: 0.2
             }]
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
               y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
@@ -331,7 +300,11 @@
       }
     }
 
-    // 將數值字串轉為純數字 (去除逗號、百分比與 NT$)
+    function findValByTitle(row, keyKeyword) {
+      const targetCol = columns.find(c => c.title.includes(keyKeyword));
+      return targetCol ? row[targetCol.key] : 0;
+    }
+
     function parseNum(val) {
       if (!val) return 0;
       let str = String(val).replace(/,/g, '').replace(/NT\$/g, '').replace(/%/g, '').trim();
@@ -339,11 +312,9 @@
       return isNaN(num) ? 0 : num;
     }
 
-    // 匯出 PNG 圖片功能
     function exportChartToPNG(chartId, title) {
       const element = document.getElementById(`export-area-${chartId}`);
       if (!element) return;
-
       html2canvas(element, { backgroundColor: '#0f172a', scale: 2 }).then(canvas => {
         const link = document.createElement('a');
         link.download = `${title}.png`;
@@ -352,76 +323,80 @@
       });
     }
 
-    /* 匯入 Excel (矩陣/轉置表格解析) */
-    document.getElementById('upload-excel').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
+    // Excel 匯入監聽機制
+    document.addEventListener("DOMContentLoaded", function() {
+      const uploadInput = document.getElementById('upload-excel');
+      if (uploadInput) {
+        uploadInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "-" });
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+              const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "-" });
 
-          if (rawData.length === 0) return alert('Excel 檔案無資料！');
+              if (rawData.length === 0) return alert('Excel 檔案無資料！');
 
-          const firstCell = String(rawData[0][0]).trim();
-          let parsedColumns = [];
-          let parsedData = [];
+              const firstCell = String(rawData[0][0]).trim();
+              let parsedColumns = [];
+              let parsedData = [];
 
-          if (firstCell === "項目" || firstCell.includes("項目")) {[cite: 6]
-            const itemNames = [];
-            for (let i = 1; i < rawData.length; i++) {
-              const name = rawData[i][0] ? String(rawData[i][0]).trim() : `欄位_${i}`;
-              if (name && name !== "-") itemNames.push(name);
+              if (firstCell === "項目" || firstCell.includes("項目")) {
+                const itemNames = [];
+                for (let i = 1; i < rawData.length; i++) {
+                  const name = rawData[i][0] ? String(rawData[i][0]).trim() : `欄位_${i}`;
+                  if (name && name !== "-") itemNames.push(name);
+                }
+
+                parsedColumns = [
+                  { key: "month", title: "月份/時間" },
+                  ...itemNames.map((name, idx) => ({ key: `item_${idx}`, title: name }))
+                ];
+
+                const headerRow = rawData[0];
+                for (let colIdx = 1; colIdx < headerRow.length; colIdx++) {
+                  const monthName = headerRow[colIdx];
+                  if (!monthName || monthName === "-") continue;
+
+                  const rowData = { month: monthName };
+                  itemNames.forEach((_, itemIdx) => {
+                    const val = (rawData[itemIdx + 1] && rawData[itemIdx + 1][colIdx] !== undefined)
+                      ? rawData[itemIdx + 1][colIdx]
+                      : "-";
+                    rowData[`item_${itemIdx}`] = val;
+                  });
+                  parsedData.push(rowData);
+                }
+              } else {
+                const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
+                parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h }));
+                parsedData = rawJson;
+              }
+
+              columns = parsedColumns;
+              sheets[0].data = parsedData;
+
+              switchTab('s1');
+              alert(`成功解析並匯入 Excel！`);
+
+            } catch (err) {
+              console.error(err);
+              alert('解析 Excel 失敗！');
             }
+            e.target.value = '';
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      }
 
-            parsedColumns = [
-              { key: "month", title: "月份/時間" },
-              ...itemNames.map((name, idx) => ({ key: `item_${idx}`, title: name }))
-            ];
-
-            const headerRow = rawData[0];
-            for (let colIdx = 1; colIdx < headerRow.length; colIdx++) {
-              const monthName = headerRow[colIdx];
-              if (!monthName || monthName === "-") continue;
-
-              const rowData = { month: monthName };
-              itemNames.forEach((_, itemIdx) => {
-                const val = (rawData[itemIdx + 1] && rawData[itemIdx + 1][colIdx] !== undefined)
-                  ? rawData[itemIdx + 1][colIdx]
-                  : "-";
-                rowData[`item_${itemIdx}`] = val;
-              });
-              parsedData.push(rowData);
-            }
-          } else {
-            const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
-            parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h }));
-            parsedData = rawJson;
-          }
-
-          columns = parsedColumns;
-          sheets[0].data = parsedData;
-
-          renderTabs();
-          switchTab(activeTabId);
-          alert(`成功匯入數據，並已自動更新 4 個分析圖表！`);
-
-        } catch (err) {
-          console.error(err);
-          alert('解析 Excel 失敗！');
-        }
-        e.target.value = '';
-      };
-      reader.readAsArrayBuffer(file);
+      // 初始化頁面
+      renderTabs();
+      switchTab('s1');
     });
-
-    // 頁面初始化
-    renderTabs();
-    switchTab('s1');
   </script>
 </body>
 </html>
