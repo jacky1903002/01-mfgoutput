@@ -110,14 +110,14 @@
     
     .chart-wrapper {
       flex: 1; position: relative; width: 100%; min-height: 400px;
-      background: #e2e8f0; padding: 16px; border-radius: 6px; border: 1px solid #cbd5e1;
+      background: #ffffff; padding: 16px; border-radius: 6px; border: 1px solid #cbd5e1;
     }
     .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
     .status-badge.loading { background: #fef3c7; color: #d97706; }
     .status-badge.success { background: #dcfce7; color: #15803d; }
     .status-badge.read-only { background: #e2e8f0; color: #475569; }
 
-    /* 登入彈窗視窗 CSS */
+    /* 管理員登入 Modal 彈窗 CSS */
     .modal-overlay {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(15, 23, 42, 0.5); z-index: 1000; justify-content: center; align-items: center;
@@ -148,7 +148,7 @@
       </div>
     </div>
 
-    <!-- 登入狀態與控制區塊 -->
+    <!-- 右上角登入控制區域 -->
     <div class="user-profile-bar">
       <span id="user-name" class="user-name"><i class="fa-solid fa-user-check"></i> <span id="user-email-text"></span></span>
       <button id="auth-btn" class="btn btn-light">
@@ -170,7 +170,7 @@
 
   <div class="content-container" id="main-content"></div>
 
-  <!-- 管理員登入 Modal 彈窗 -->
+  <!-- 管理員登入視窗 Modal -->
   <div class="modal-overlay" id="login-modal">
     <div class="modal-card">
       <div class="modal-title"><i class="fa-solid fa-lock"></i> 管理員登入</div>
@@ -214,7 +214,7 @@
 
     window.currentUser = null;
 
-    // 監聽登入狀態改變
+    // 監聽登入狀態變更
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
       const authBtn = document.getElementById('auth-btn');
@@ -225,7 +225,6 @@
       const importBtn = document.getElementById('btn-import-excel');
 
       if (user) {
-        // 已登入
         authBtnText.innerText = "登出";
         authBtn.className = "btn btn-danger";
         emailText.innerText = user.email;
@@ -234,7 +233,6 @@
         addBtn.disabled = false;
         importBtn.classList.remove('disabled');
       } else {
-        // 未登入
         authBtnText.innerText = "管理員登入";
         authBtn.className = "btn btn-light";
         name.style.display = "none";
@@ -249,7 +247,7 @@
       }
     });
 
-    // 點擊右上角控制按鈕 (開啟彈窗或登出)
+    // 點擊登入按鈕開啟彈窗
     document.getElementById('auth-btn').addEventListener('click', () => {
       if (window.currentUser) {
         signOut(auth).then(() => alert('已成功登出！'));
@@ -258,7 +256,7 @@
       }
     });
 
-    // 執行 Email / Password 登入
+    // 執行管理員登入
     document.getElementById('do-login-btn').addEventListener('click', () => {
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
@@ -268,7 +266,7 @@
       signInWithEmailAndPassword(auth, email, password)
         .then(() => {
           window.closeLoginModal();
-          alert('登入成功！已解鎖編輯權限。');
+          alert('登入成功！已解除編輯鎖定。');
         })
         .catch(error => {
           console.error("登入失敗:", error);
@@ -281,7 +279,7 @@
       document.getElementById('login-password').value = '';
     };
 
-    // 全域變數
+    // 全域變數定義
     window.columns = [
       { key: "month", title: "月份/時間" },
       { key: "item_0", title: "石墨產出市值(NT$)" },
@@ -302,13 +300,13 @@
       { id: "chart_1", name: "📈 產出市值與數量趨勢圖", title: "合計產出市值(NT$) / 產出數量(PCS)", type: "combo" },
       { id: "chart_2", name: "📊 報廢/產值分析圖", title: "報廢/產值 (2023~2026)", type: "line", dataKey: "報廢/產值" },
       { id: "chart_3", name: "📊 刀具費/產值分析圖", title: "刀具費/產值 (2023~2026)", type: "line", dataKey: "刀具費/產值" },
-      { id: "chart_4", name: "📊 加班費/產值分析圖", title: "加班費/產值 (2023~2026)(未定)", type: "line", dataKey: "加班費/產值" }
+      { id: "chart_4", name: "📊 加班費/產值分析圖", title: "加班費/產值 (2023~2026)", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 同步儲存至 Firestore
+    // 同步寫入 Firestore
     window.saveToFirebase = async function() {
       if (!window.currentUser) {
-        alert("權限不足！請點擊右上角「管理員登入」後再儲存修改。");
+        alert("權限不足！請先點擊右上角「管理員登入」再進行資料修改。");
         return;
       }
 
@@ -325,11 +323,11 @@
         if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
       } catch (e) {
         console.error("Firebase 寫入失敗:", e);
-        alert("資料同步失敗，請確定是否已使用具備修改權限的帳號登入！");
+        alert("資料同步失敗，請確認帳號是否具備權限或 Firebase Rules 是否正確設定！");
       }
     };
 
-    // 即時監聽 Firestore 資料更新
+    // 監聽 Firestore 即時更新
     onSnapshot(docRef, (docSnap) => {
       const statusEl = document.getElementById('firebase-status');
       if (statusEl) { 
@@ -347,9 +345,9 @@
       window.switchTab(window.activeTabId);
     });
 
-    // Excel 匯入處理
+    // Excel 匯入
     document.getElementById('upload-excel').addEventListener('change', function(e) {
-      if (!window.currentUser) return alert('請登入帳號後再執行匯入！');
+      if (!window.currentUser) return alert('請先登入管理員帳號後再進行匯入！');
       
       const file = e.target.files[0];
       if (!file) return;
@@ -595,56 +593,41 @@
       } else {
         const lineValues = dataSheet.map(r => parseNum(findValByTitle(r, chartConfig.dataKey)));
 
-        const yearAveragePlugin = {
-          id: 'yearAveragePlugin',
+        // 僅保留年份黑色分隔線的外掛 (已移除藍色虛線與平均紅字)
+        const yearSeparatorPlugin = {
+          id: 'yearSeparatorPlugin',
           afterDraw(chart) {
-            const { ctx, chartArea: { top, bottom }, scales: { x, y } } = chart;
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
             const yearGroups = {};
+            
             labels.forEach((lbl, idx) => {
               const yrMatch = lbl.match(/\d{2}$/);
               const yr = yrMatch ? yrMatch[0] : 'Other';
               if (!yearGroups[yr]) yearGroups[yr] = [];
-              yearGroups[yr].push({ idx, val: lineValues[idx] });
+              yearGroups[yr].push(idx);
             });
 
             const yearKeys = Object.keys(yearGroups);
             ctx.save();
 
             yearKeys.forEach((yr, keyIdx) => {
-              const items = yearGroups[yr];
-              if (items.length === 0) return;
-
-              const firstX = x.getPixelForValue(items[0].idx);
-              const lastX = x.getPixelForValue(items[items.length - 1].idx);
-              const avg = items.reduce((sum, item) => sum + item.val, 0) / items.length;
-              const avgFormatted = (avg < 1 && avg > 0) ? (avg * 100).toFixed(2) + '%' : avg.toFixed(2);
-
-              const avgY = y.getPixelForValue(avg);
-              ctx.beginPath();
-              ctx.setLineDash([6, 6]);
-              ctx.strokeStyle = '#0000ff';
-              ctx.lineWidth = 2;
-              ctx.moveTo(firstX, avgY);
-              ctx.lineTo(lastX, avgY);
-              ctx.stroke();
-
               if (keyIdx > 0) {
-                const prevLastX = x.getPixelForValue(yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0].idx);
-                const separatorX = (prevLastX + firstX) / 2;
+                const prevLastIdx = yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0];
+                const currFirstIdx = yearGroups[yr][0];
+
+                const prevLastX = x.getPixelForValue(prevLastIdx);
+                const currFirstX = x.getPixelForValue(currFirstIdx);
+                const separatorX = (prevLastX + currFirstX) / 2;
+
+                // 畫黑色垂直分隔線
                 ctx.beginPath();
                 ctx.setLineDash([]);
                 ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 2;
                 ctx.moveTo(separatorX, top);
                 ctx.lineTo(separatorX, bottom);
                 ctx.stroke();
               }
-
-              const centerX = (firstX + lastX) / 2;
-              ctx.fillStyle = '#ff0000';
-              ctx.font = 'bold 22px Arial';
-              ctx.textAlign = 'center';
-              ctx.fillText(avgFormatted, centerX, top + 35);
             });
 
             ctx.restore();
@@ -664,12 +647,12 @@
           options: {
             responsive: true, maintainAspectRatio: false,
             scales: {
-              x: { ticks: { color: '#334155' }, grid: { color: '#cbd5e1' } },
-              y: { ticks: { color: '#334155' }, grid: { color: '#cbd5e1' } }
+              x: { ticks: { color: '#334155' }, grid: { color: '#e2e8f0' } },
+              y: { ticks: { color: '#334155' }, grid: { color: '#e2e8f0' } }
             },
             plugins: { legend: { labels: { color: '#0f172a' } } }
           },
-          plugins: [yearAveragePlugin]
+          plugins: [yearSeparatorPlugin]
         });
       }
     }
