@@ -699,40 +699,53 @@
       XLSX.writeFile(wb, `${currentSheet.name}_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    /* 匯入 Excel 監聽事件 */
-    document.getElementById('upload-excel').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
+/* 匯入 Excel 監聽事件（動態調適欄位與格式） */
+document.getElementById('upload-excel').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
 
-          if (jsonData.length === 0) {
-            alert('匯入的 Excel 檔案中沒有數據！');
-            return;
-          }
+      // 1. 使用 raw: false 保持顯示格式（如日期字串），defval 避免缺值時欄位錯位
+      const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "" });
 
-          // 將匯入的資料載入至當前選取的工作表中
-          const currentSheet = sheets.find(s => s.id === activeSheetId);
-          if (currentSheet) {
-            currentSheet.data = jsonData;
-            renderTable();
-            alert(`成功匯入 ${jsonData.length} 筆資料至「${currentSheet.name}」！`);
-          }
-        } catch (err) {
-          alert('解析 Excel 檔案失敗，請確保檔案格式正確！');
-        }
-        // 重置 input 以方便重複選取同一檔案
-        e.target.value = '';
-      };
-      reader.readAsArrayBuffer(file);
-    });
+      if (rawJson.length === 0) {
+        alert('匯入的 Excel 檔案中沒有數據！');
+        return;
+      }
+
+      // 2. 自動擷取 Excel 的所有標題名稱，動態更新 columns 陣列
+      const excelHeaders = Object.keys(rawJson[0]);
+      columns = excelHeaders.map(headerText => ({
+        key: headerText,
+        title: headerText,
+        // 若欄位名稱包含 "進度" 或 "%"，自動啟用進度條樣式
+        isProgress: headerText.includes('進度') || headerText.includes('%')
+      }));
+
+      // 3. 載入資料至當前選取的工作表
+      const currentSheet = sheets.find(s => s.id === activeSheetId);
+      if (currentSheet) {
+        currentSheet.data = rawJson;
+        renderTable(); // 重新繪製表頭與內容
+        alert(`成功匯入 ${rawJson.length} 筆資料，並已自動匹配欄位！`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('解析 Excel 檔案失敗，請確認檔案內容格式！');
+    }
+    
+    // 重置 input，便於再次選取相同檔案
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
 
     // 頁面初始化
     renderTabs();
