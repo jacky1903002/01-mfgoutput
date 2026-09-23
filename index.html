@@ -5,14 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MFG Output Analysis - 專案進度與分析系統</title>
   
-  <!-- Font Awesome 圖示庫 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  
-  <!-- SheetJS (Excel 匯入) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Chart.js (圖表繪製) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- html2canvas (圖表匯出 PNG) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
@@ -65,7 +60,6 @@
     .btn-success:hover { background-color: #059669; }
     .btn:disabled, .btn-light.disabled { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; }
 
-    /* 工作表選單 */
     .nav-tabs-container {
       background-color: #ffffff; padding: 12px 24px;
       display: flex; flex-direction: column; gap: 8px;
@@ -99,7 +93,6 @@
 
     .content-container { flex: 1; overflow-y: auto; padding: 20px 24px; background-color: #f8fafc; }
 
-    /* 表格樣式 */
     .table-responsive-wrapper {
       max-height: 380px;
       overflow: auto;
@@ -242,7 +235,6 @@
 
   <div class="content-container" id="main-content"></div>
 
-  <!-- 管理員登入 Modal -->
   <div class="modal-overlay" id="login-modal">
     <div class="modal-card">
       <div class="modal-title"><i class="fa-solid fa-lock"></i> 管理員登入</div>
@@ -777,7 +769,8 @@
     }
 
     function findColKeyByTitle(columns, title) {
-      const col = columns.find(c => c.title.trim() === title.trim() || c.title.includes(title));
+      if (!columns || !Array.isArray(columns)) return null;
+      const col = columns.find(c => c.title && (c.title.trim() === title.trim() || c.title.includes(title)));
       return col ? col.key : null;
     }
 
@@ -857,19 +850,45 @@
         window.chartInstances[config.id].destroy();
       }
 
-      const labels = sheet.data.map(d => d.month || '');
-      const cols = sheet.columns;
+      let labels = [];
+      let compositeValues = [];
+      let graphiteValues = [];
+      let totalValues = [];
 
-      const keyComposite = findColKeyByTitle(cols, "複材");
-      const keyGraphite = findColKeyByTitle(cols, "石墨產值");
-      const keyTotal = findColKeyByTitle(cols, "複材加石墨");
+      const firstColKey = sheet.columns && sheet.columns[0] ? sheet.columns[0].key : 'month';
+      const isHorizontalTable = sheet.data.some(row => row[firstColKey] && (row[firstColKey].includes('複材') || row[firstColKey].includes('石墨')));
+
+      if (isHorizontalTable) {
+        labels = sheet.columns.slice(1).map(c => c.title);
+
+        const compositeRow = sheet.data.find(r => r[firstColKey] && r[firstColKey].trim() === '複材') || {};
+        const graphiteRow = sheet.data.find(r => r[firstColKey] && r[firstColKey].trim() === '石墨產值') || {};
+        const totalRow = sheet.data.find(r => r[firstColKey] && (r[firstColKey].trim() === '複材加石墨' || r[firstColKey].trim() === '複材加石墨')) || {};
+
+        sheet.columns.slice(1).forEach(c => {
+          compositeValues.push(parseNum(compositeRow[c.key]));
+          graphiteValues.push(parseNum(graphiteRow[c.key]));
+          totalValues.push(parseNum(totalRow[c.key]));
+        });
+      } else {
+        labels = sheet.data.map(d => d.month || '');
+        const cols = sheet.columns;
+
+        const keyComposite = findColKeyByTitle(cols, "複材");
+        const keyGraphite = findColKeyByTitle(cols, "石墨產值");
+        const keyTotal = findColKeyByTitle(cols, "複材加石墨");
+
+        compositeValues = sheet.data.map(d => parseNum(d[keyComposite]));
+        graphiteValues = sheet.data.map(d => parseNum(d[keyGraphite]));
+        totalValues = sheet.data.map(d => parseNum(d[keyTotal]));
+      }
 
       const chartData = {
         labels: labels,
         datasets: [
           {
             label: '複材',
-            data: sheet.data.map(d => parseNum(d[keyComposite])),
+            data: compositeValues,
             borderColor: '#6b21a8',
             backgroundColor: '#6b21a8',
             pointStyle: 'rect',
@@ -879,7 +898,7 @@
           },
           {
             label: '石墨產值',
-            data: sheet.data.map(d => parseNum(d[keyGraphite])),
+            data: graphiteValues,
             borderColor: '#dc2626',
             backgroundColor: '#dc2626',
             pointStyle: 'triangle',
@@ -889,7 +908,7 @@
           },
           {
             label: '複材加石墨',
-            data: sheet.data.map(d => parseNum(d[keyTotal])),
+            data: totalValues,
             borderColor: '#2563eb',
             backgroundColor: '#2563eb',
             pointStyle: 'circle',
