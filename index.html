@@ -99,7 +99,7 @@
 
     .content-container { flex: 1; overflow-y: auto; padding: 20px 24px; background-color: #f8fafc; }
 
-    /* 表格凍結窗格核心樣式 */
+    /* 表格凍結窗格樣式 */
     .table-responsive-wrapper {
       max-height: 480px;
       overflow: auto;
@@ -133,7 +133,7 @@
       z-index: 20;
     }
 
-    /* 第一欄（首欄）凍結 */
+    /* 第一欄凍結 */
     table.custom-table td:first-child, table.custom-table th:first-child {
       position: sticky;
       left: 0;
@@ -144,7 +144,7 @@
     }
 
     table.custom-table th:first-child {
-      z-index: 30; /* 交叉點置頂 */
+      z-index: 30;
       background-color: #e2e8f0;
     }
 
@@ -157,7 +157,6 @@
 
     table.custom-table tr:hover td { background-color: #f1f5f9; }
 
-    /* 新增欄位與列位操作選單 */
     .table-toolbar {
       display: flex;
       gap: 8px;
@@ -235,7 +234,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
       <span style="font-size: 12px; font-weight: bold; color: #64748b;">工作表清單：</span>
       <label id="btn-import-excel" class="btn btn-light" style="cursor:pointer;">
-        <i class="fa-solid fa-file-import"></i> 匯入 Excel 覆蓋
+        <i class="fa-solid fa-file-import"></i> 匯入 Excel 至當前工作表
         <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
       </label>
     </div>
@@ -350,7 +349,8 @@
       document.getElementById('login-password').value = '';
     };
 
-    window.columns = [
+    // 預設欄位範本
+    const defaultColumns = [
       { key: "month", title: "月份/時間" },
       { key: "item_0", title: "石墨產出市值(NT$)" },
       { key: "item_1", title: "石墨產出數量(PCS)" },
@@ -361,7 +361,8 @@
       { key: "item_10", title: "加班費/產值" }
     ];
 
-    window.sheets = [{ id: "s1", name: "數據資料表", data: [] }];
+    // 工作表資料結構改為包含獨立的 columns
+    window.sheets = [{ id: "s1", name: "數據資料表", columns: [...defaultColumns], data: [] }];
     window.activeSheetId = "s1";
     window.logoUrl = "";
     window.chartInstances = {};
@@ -384,7 +385,6 @@
         if (statusEl) { statusEl.className = 'status-badge loading'; statusEl.innerText = '● Firebase 儲存中...'; }
         
         await setDoc(docRef, {
-          columns: window.columns,
           sheets: window.sheets,
           logoUrl: window.logoUrl,
           updatedAt: new Date().toISOString()
@@ -406,8 +406,13 @@
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.columns) window.columns = data.columns;
-        if (data.sheets) window.sheets = data.sheets;
+        if (data.sheets) {
+          // 相容性處理：若既有資料沒有 columns，給予預設值
+          window.sheets = data.sheets.map(s => ({
+            ...s,
+            columns: s.columns || (data.columns ? [...data.columns] : [...defaultColumns])
+          }));
+        }
         if (data.logoUrl !== undefined) {
           window.logoUrl = data.logoUrl;
           window.renderLogo();
@@ -418,7 +423,7 @@
       window.renderMainContent();
     });
 
-    // Excel 匯入
+    // 獨立 Excel 匯入：僅覆蓋當前 Active 工作表
     document.getElementById('upload-excel').addEventListener('change', function(e) {
       if (!window.currentUser) return alert('請先登入管理員帳號後再進行匯入！');
       
@@ -471,10 +476,12 @@
             parsedData = rawJson;
           }
 
-          window.columns = parsedColumns;
-          
+          // 核心修正：僅更新目前選取的工作表 (Active Sheet)
           const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
-          if (curSheet) curSheet.data = parsedData;
+          if (curSheet) {
+            curSheet.columns = parsedColumns;
+            curSheet.data = parsedData;
+          }
 
           window.saveToFirebase();
 
@@ -557,7 +564,14 @@
       if (!window.currentUser) return alert('請登入管理員帳號後再進行編輯！');
       const newId = `s_${Date.now()}`;
       const newName = `工作表${sheets.length + 1}`;
-      sheets.push({ id: newId, name: newName, data: [] });
+      
+      const defaultCols = [
+        { key: "month", title: "月份/時間" },
+        { key: "col_1", title: "項目一" },
+        { key: "col_2", title: "項目二" }
+      ];
+
+      sheets.push({ id: newId, name: newName, columns: defaultCols, data: [] });
       activeSheetId = newId;
       if (window.saveToFirebase) window.saveToFirebase();
       renderTabs();
@@ -579,14 +593,14 @@
       }
     }
 
-    // === 新增/刪除 欄位與列位功能 ===
+    // 獨立列位/欄位操作
     function addRow() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
       const curSheet = sheets.find(s => s.id === activeSheetId);
       if (!curSheet) return;
 
       const newRow = {};
-      columns.forEach(col => newRow[col.key] = "-");
+      (curSheet.columns || []).forEach(col => newRow[col.key] = "-");
       curSheet.data.push(newRow);
 
       if (window.saveToFirebase) window.saveToFirebase();
@@ -605,15 +619,16 @@
 
     function addColumn() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
+      const curSheet = sheets.find(s => s.id === activeSheetId);
+      if (!curSheet) return;
+
       const colName = prompt("請輸入新增欄位名稱：", "新欄位");
       if (!colName || colName.trim() === "") return;
 
       const newKey = `custom_col_${Date.now()}`;
-      columns.push({ key: newKey, title: colName.trim() });
+      curSheet.columns.push({ key: newKey, title: colName.trim() });
 
-      sheets.forEach(sheet => {
-        sheet.data.forEach(row => { row[newKey] = "-"; });
-      });
+      curSheet.data.forEach(row => { row[newKey] = "-"; });
 
       if (window.saveToFirebase) window.saveToFirebase();
       renderMainContent();
@@ -621,12 +636,11 @@
 
     function deleteColumn() {
       if (!window.currentUser) return alert('請先登入管理員帳號！');
-      if (columns.length <= 1) return alert('至少需要保留一個欄位！');
+      const curSheet = sheets.find(s => s.id === activeSheetId);
+      if (!curSheet || curSheet.columns.length <= 1) return alert('至少需要保留一個欄位！');
 
-      const deletedCol = columns.pop();
-      sheets.forEach(sheet => {
-        sheet.data.forEach(row => { delete row[deletedCol.key]; });
-      });
+      const deletedCol = curSheet.columns.pop();
+      curSheet.data.forEach(row => { delete row[deletedCol.key]; });
 
       if (window.saveToFirebase) window.saveToFirebase();
       renderMainContent();
@@ -637,10 +651,10 @@
       const container = document.getElementById('main-content');
       const currentSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
       const isLogined = !!window.currentUser;
+      const sheetColumns = currentSheet.columns || [];
 
       let html = '';
 
-      // 操作工具列（新增/刪除列、欄）
       if (isLogined) {
         html += `
           <div class="table-toolbar">
@@ -652,26 +666,25 @@
         `;
       }
 
-      // 數據表格（含凍結窗格包覆容器）
       if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
-        html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。${isLogined ? '可點擊上方按鈕新增列/欄或匯入 Excel' : '（請登入管理員帳號以進行編輯）'}</div>`;
+        html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。${isLogined ? '可點擊上方按鈕新增列/欄或匯入專屬 Excel' : '（請登入管理員帳號以進行編輯）'}</div>`;
       } else {
         html += `<div class="table-responsive-wrapper"><table class="custom-table"><thead><tr>`;
-        columns.forEach(col => { html += `<th>${col.title}</th>`; });
+        sheetColumns.forEach(col => { html += `<th>${col.title}</th>`; });
         html += `</tr></thead><tbody>`;
 
         currentSheet.data.forEach(row => {
           html += `<tr>`;
-          columns.forEach(col => { html += `<td ${isLogined ? 'contenteditable="true"' : ''}>${row[col.key] || '-'}</td>`; });
+          sheetColumns.forEach(col => { html += `<td ${isLogined ? 'contenteditable="true"' : ''}>${row[col.key] || '-'}</td>`; });
           html += `</tr>`;
         });
         html += `</tbody></table></div>`;
       }
 
-      // 判斷是否為預設首頁工作表 (僅首頁預設數據資料表顯示分析圖表)
+      // 僅預設第一張表格（數據資料表）顯示分析圖表
       const isFirstDefaultSheet = (currentSheet.id === "s1" || currentSheet.name === "數據資料表");
 
-      if (isFirstDefaultSheet) {
+      if (isFirstDefaultSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `
           <div class="charts-section-title">
             <i class="fa-solid fa-chart-line"></i> 分析圖表 (資料來源：${currentSheet.name})
@@ -700,8 +713,7 @@
 
       container.innerHTML = html;
 
-      // 若有分析圖表則進行繪製
-      if (isFirstDefaultSheet) {
+      if (isFirstDefaultSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => {
           chartConfigs.forEach(cp => buildChart(cp, currentSheet));
         }, 100);
@@ -724,8 +736,8 @@
       const ctx = canvas.getContext('2d');
 
       if (chartConfig.type === "combo") {
-        const valMarket = dataSheet.map(r => parseNum(findValByTitle(r, '合計產出市值')));
-        const valQty = dataSheet.map(r => parseNum(findValByTitle(r, '合計產出數量')));
+        const valMarket = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, '合計產出市值')));
+        const valQty = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, '合計產出數量')));
 
         chartInstances[chartConfig.id] = new Chart(ctx, {
           type: 'bar',
@@ -748,7 +760,7 @@
         });
 
       } else {
-        const lineValues = dataSheet.map(r => parseNum(findValByTitle(r, chartConfig.dataKey)));
+        const lineValues = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.dataKey)));
 
         const yearSeparatorPlugin = {
           id: 'yearSeparatorPlugin',
@@ -812,8 +824,9 @@
       }
     }
 
-    function findValByTitle(row, keyKeyword) {
-      const targetCol = columns.find(c => c.title.includes(keyKeyword));
+    function findValByTitle(sheet, row, keyKeyword) {
+      const sheetCols = sheet.columns || [];
+      const targetCol = sheetCols.find(c => c.title.includes(keyKeyword));
       return targetCol ? row[targetCol.key] : 0;
     }
 
