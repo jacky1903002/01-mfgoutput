@@ -181,10 +181,35 @@
       { key: "c9", title: "其他產品成本" }
     ];
 
+    // 第三個工作表：複材與石墨產值趨勢
     const defaultColumns3 = [
       { key: "month", title: "月份/時間" },
-      { key: "val_1", title: "項目一" },
-      { key: "val_2", title: "項目二" }
+      { key: "fuCai", title: "複材產值" },
+      { key: "shiMo", title: "石墨產值" },
+      { key: "total", title: "總計" }
+    ];
+
+    const defaultData3 = [
+      { month: 'Jan-25', fuCai: '2,168,202', shiMo: '10,341,393', total: '12,509,595' },
+      { month: 'Feb-25', fuCai: '1,373,689', shiMo: '8,834,948', total: '10,208,637' },
+      { month: 'Mar-25', fuCai: '1,719,352', shiMo: '12,656,794', total: '14,376,146' },
+      { month: 'Apr-25', fuCai: '5,510,971', shiMo: '12,801,784', total: '18,312,755' },
+      { month: 'May-25', fuCai: '1,969,023', shiMo: '9,039,136', total: '11,008,159' },
+      { month: 'Jun-25', fuCai: '2,178,119', shiMo: '9,663,693', total: '11,841,812' },
+      { month: 'Jul-25', fuCai: '5,780,233', shiMo: '7,736,610', total: '13,516,843' },
+      { month: 'Aug-25', fuCai: '2,360,138', shiMo: '13,044,560', total: '15,404,698' },
+      { month: 'Sep-25', fuCai: '4,800,355', shiMo: '12,513,749', total: '17,314,104' },
+      { month: 'Oct-25', fuCai: '1,509,828', shiMo: '11,440,798', total: '12,950,626' },
+      { month: 'Nov-25', fuCai: '2,973,977', shiMo: '8,708,855', total: '11,682,832' },
+      { month: 'Dec-25', fuCai: '7,576,892', shiMo: '10,375,376', total: '17,952,268' },
+      { month: 'Jan-26', fuCai: '1,807,153', shiMo: '15,100,625', total: '16,907,778' },
+      { month: 'Feb-26', fuCai: '7,366,561', shiMo: '13,797,685', total: '21,164,246' },
+      { month: 'Mar-26', fuCai: '1,860,401', shiMo: '16,431,715', total: '18,292,116' },
+      { month: 'Apr-26', fuCai: '6,058,903', shiMo: '12,716,048', total: '18,774,951' },
+      { month: 'May-26', fuCai: '9,254,563', shiMo: '18,226,801', total: '27,481,364' },
+      { month: 'Jun-26', fuCai: '6,065,663', shiMo: '20,585,809', total: '26,651,472' },
+      { month: 'Jul-26', fuCai: '7,110,108', shiMo: '22,692,093', total: '29,802,201' },
+      { month: 'Aug-26', fuCai: '9,091,916', shiMo: '14,316,580', total: '23,408,496' }
     ];
 
     const defaultColumns4 = [
@@ -215,10 +240,10 @@
     window.sheets = [
       { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] },
       { id: "s2", name: "刀具費佔成本", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: [] },
-      { id: "s3", name: "植村占比", columns: JSON.parse(JSON.stringify(defaultColumns3)), data: [] },
+      { id: "s3", name: "複材與石墨產值", columns: JSON.parse(JSON.stringify(defaultColumns3)), data: JSON.parse(JSON.stringify(defaultData3)) },
       { id: "s4", name: "各客戶累積產值", columns: JSON.parse(JSON.stringify(defaultColumns4)), data: JSON.parse(JSON.stringify(defaultData4)) }
     ];
-    window.activeSheetId = "s4";
+    window.activeSheetId = "s3";
 
     window.sheet1ChartConfigs = [
       { id: "s1_chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
@@ -500,6 +525,15 @@
       }
     };
 
+    // 輔助函式：清除千分位並轉為數字
+    function parseNum(val) {
+      if (typeof val === 'number') return val;
+      if (!val) return 0;
+      const clean = String(val).replace(/,/g, '').trim();
+      const num = parseFloat(clean);
+      return isNaN(num) ? 0 : num;
+    }
+
     window.renderMainContent = function() {
       const container = document.getElementById('main-content');
       const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
@@ -535,9 +569,9 @@
       }
 
       const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
-const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
-const isThirdSheet = (currentSheet.id === "s3" || currentSheet.name === "複材占比");
-const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客戶累積產值");
+      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
+      const isThirdSheet = (currentSheet.id === "s3" || currentSheet.name === "複材與石墨產值");
+      const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客戶累積產值");
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `<div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 分析圖表</div><div class="charts-grid">`;
@@ -567,6 +601,18 @@ const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客
           `;
         });
         html += `</div>`;
+      } else if (isThirdSheet && currentSheet.data && currentSheet.data.length > 0) {
+        // 第三個工作表的圖表
+        html += `
+          <div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 複材與石墨產值趨勢分析</div>
+          <div class="chart-page" id="export-area-s3_chart" style="margin-bottom: 30px;">
+            <div class="chart-header">
+              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2b5c8f;"></i> 複材與石墨產值趨勢圖 (2025/01 - 2026/08)</div>
+              <button class="btn btn-success" onclick="exportChartToPNG('s3_chart', '複材與石墨產值趨勢圖')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
+            </div>
+            <div class="chart-wrapper" style="height: 480px;"><canvas id="canvas-s3_chart"></canvas></div>
+          </div>
+        `;
       } else if (isFourthSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `
           <div class="charts-section-title"><i class="fa-solid fa-chart-pie"></i> 2026 各客戶累積產值佔比 (Treemap)</div>
@@ -586,219 +632,168 @@ const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客
         setTimeout(() => { window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet)); }, 100);
       } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => { window.sheet2ChartConfigs.forEach(cp => buildChartSheet2(cp, currentSheet)); }, 100);
+      } else if (isThirdSheet && currentSheet.data && currentSheet.data.length > 0) {
+        setTimeout(() => { renderSheet3Chart(currentSheet); }, 100);
       } else if (isFourthSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => { renderTreemap(currentSheet); }, 100);
       }
     };
 
-function renderTreemap(sheet) {
-    const container = document.getElementById('treemap-container');
-    if (!container) return;
-    let items = sheet.data.map(row => {
+    // 渲染第三個工作表的圖表邏輯
+    function renderSheet3Chart(sheet) {
+      const canvasEl = document.getElementById('canvas-s3_chart');
+      if (!canvasEl) return;
+      const ctx = canvasEl.getContext('2d');
+
+      const months = sheet.data.map(r => r.month || '-');
+      const fuCai = sheet.data.map(r => parseNum(r.fuCai));
+      const shiMo = sheet.data.map(r => parseNum(r.shiMo));
+      const total = sheet.data.map(r => parseNum(r.total));
+
+      if (window.chartInstances['s3_chart']) {
+        window.chartInstances['s3_chart'].destroy();
+      }
+
+      window.chartInstances['s3_chart'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: '複材',
+              data: fuCai,
+              borderColor: '#2b5c8f',
+              backgroundColor: '#2b5c8f',
+              borderWidth: 2,
+              tension: 0.1,
+              pointRadius: 4
+            },
+            {
+              label: '石墨產值',
+              data: shiMo,
+              borderColor: '#d95f02',
+              backgroundColor: '#d95f02',
+              borderWidth: 2,
+              tension: 0.1,
+              pointRadius: 4
+            },
+            {
+              label: '複材加石墨 (總計)',
+              data: total,
+              borderColor: '#7570b3',
+              backgroundColor: '#7570b3',
+              borderWidth: 3,
+              borderDash: [5, 5],
+              tension: 0.1,
+              pointRadius: 5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let value = context.parsed.y;
+                  return context.dataset.label + ': ' + value.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: {
+                callback: function(value) { return value.toLocaleString(); }
+              },
+              grid: { color: '#e5e7eb' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTreemap(sheet) {
+      const container = document.getElementById('treemap-container');
+      if (!container) return;
+      let items = sheet.data.map(row => {
         const cust = row.customer || row.客戶 || '未知';
         const totalVal = parseNum(row.total || row.總計 || 0);
         return { customer: cust, value: totalVal };
-    }).filter(item => item.value > 0);
+      }).filter(item => item.value > 0);
 
-    items.sort((a, b) => b.value - a.value);
-    const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
-    const colors = ['#1d4ed8', '#b91c1c', '#b45309', '#047857', '#0e7490', '#6d28d9', '#be185d', '#334155', '#475569', '#0284c7', '#0d9488'];
+      items.sort((a, b) => b.value - a.value);
+      const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
+      const colors = ['#1d4ed8', '#b91c1c', '#b45309', '#047857', '#0e7490', '#6d28d9', '#be185d', '#334155', '#475569', '#0284c7', '#0d9488'];
 
-    let html = '';
-    items.forEach((item, idx) => {
+      let html = '';
+      items.forEach((item, idx) => {
         const percentage = grandTotal > 0 ? ((item.value / grandTotal) * 100).toFixed(2) + '%' : '0%';
         const bg = colors[idx % colors.length];
         let flexGrow = Math.max(Math.round((item.value / grandTotal) * 100), 4);
         html += `
           <div style="flex: ${flexGrow} 1 ${flexGrow > 20 ? '40%' : '18%'}; background: ${bg}; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); min-height: 90px;">
             <div style="font-size: 22px; font-weight: bold; letter-spacing: 0.5px;">${percentage}</div>
-            <div style="font-size: 16px; font-weight: 600; opacity: 0.95;">${item.customer}</div>
+            <div>
+              <div style="font-size: 14px; font-weight: 600; margin-bottom: 2px;">${item.customer}</div>
+              <div style="font-size: 12px; opacity: 0.85;">NT$ ${item.value.toLocaleString()}</div>
+            </div>
           </div>
         `;
-    });
-    
-    // 將外層容器高度從 480px 調整為 620px
-    container.style.height = '620px';
-    container.innerHTML = html;
-}
+      });
+      container.innerHTML = html;
+    }
 
-    const yearSeparatorPlugin = {
-      id: 'yearSeparatorPlugin',
-      afterDraw(chart) {
-        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-        const labels = chart.data.labels || [];
-        const yearGroups = {};
-        labels.forEach((lbl, idx) => {
-          const yrMatch = String(lbl).match(/\d{2}$/);
-          const yr = yrMatch ? yrMatch[0] : 'Other';
-          if (!yearGroups[yr]) yearGroups[yr] = [];
-          yearGroups[yr].push(idx);
-        });
-        const yearKeys = Object.keys(yearGroups);
-        ctx.save();
-        yearKeys.forEach((yr, keyIdx) => {
-          if (keyIdx > 0) {
-            const prevLastIdx = yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0];
-            const currFirstIdx = yearGroups[yr][0];
-            const prevLastX = x.getPixelForValue(prevLastIdx);
-            const currFirstX = x.getPixelForValue(currFirstIdx);
-            const separatorX = (prevLastX + currFirstX) / 2;
-            ctx.beginPath();
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.5;
-            ctx.moveTo(separatorX, top);
-            ctx.lineTo(separatorX, bottom);
-            ctx.stroke();
-          }
-        });
-        ctx.restore();
-      }
+    // 佔位圖表繪製函式（避免第一、二頁切換報錯）
+    window.buildChartSheet1 = function(cp, sheet) {
+      const canvasEl = document.getElementById(`canvas-${cp.id}`);
+      if (!canvasEl) return;
+      const ctx = canvasEl.getContext('2d');
+      const months = sheet.data.map(r => r.month || '-');
+      const val = sheet.data.map(r => parseNum(r[cp.dataKey] || r.item_6));
+
+      if (window.chartInstances[cp.id]) window.chartInstances[cp.id].destroy();
+      window.chartInstances[cp.id] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [{ label: cp.title, data: val, borderColor: '#2563eb', backgroundColor: '#3b82f6', tension: 0.1 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
     };
 
-    function parseNum(val, isPercentageHint = false) {
-      if (val === undefined || val === null || val === "-" || val === "") return 0;
-      let str = String(val).trim();
-      let hasPercentSign = str.includes('%');
-      str = str.replace(/[^0-9.-]/g, '');
-      let num = parseFloat(str);
-      if (isNaN(num)) return 0;
-      if (hasPercentSign) return num;
-      else if (isPercentageHint && Math.abs(num) <= 1.0 && num !== 0) return num * 100;
-      return num;
-    }
+    window.buildChartSheet2 = function(cp, sheet) {
+      const canvasEl = document.getElementById(`canvas-${cp.id}`);
+      if (!canvasEl) return;
+      const ctx = canvasEl.getContext('2d');
+      const months = sheet.data.map(r => r.month || '-');
+      const barVal = sheet.data.map(r => parseNum(r[cp.barKey] || r.c1));
 
-    function getColumnKeyByTitle(sheet, targetTitle) {
-      if (!sheet || !sheet.columns) return null;
-      let found = sheet.columns.find(c => c.key === targetTitle || c.title.trim() === targetTitle.trim());
-      if (found) return found.key;
-      const normalize = (str) => String(str).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "").toLowerCase();
-      const cleanTarget = normalize(targetTitle);
-      found = sheet.columns.find(c => normalize(c.title).includes(cleanTarget) || cleanTarget.includes(normalize(c.title)));
-      return found ? found.key : null;
-    }
-
-    function buildChartSheet1(config, sheet) {
-      const canvas = document.getElementById(`canvas-${config.id}`);
-      if (!canvas) return;
-      if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
-      const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-      const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
-
-      if (config.type === "combo") {
-        const valKey = getColumnKeyByTitle(sheet, "合計產出市值");
-        const qtyKey = getColumnKeyByTitle(sheet, "合計產出數量");
-        const valData = sheet.data.map(r => parseNum(r[valKey]));
-        const qtyData = sheet.data.map(r => parseNum(r[qtyKey]));
-
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              { type: 'bar', label: '合計產出市值(NT$)', data: valData, backgroundColor: 'rgba(59, 130, 246, 0.75)', borderColor: '#3b82f6', borderWidth: 1, yAxisID: 'y' },
-              { type: 'line', label: '合計產出數量(PCS)', data: qtyData, borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
-            ]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '市值 (NT$)' } },
-              y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '數量 (PCS)' } }
-            }
-          }
-        });
-      } else if (config.type === "line") {
-        const dataKey = getColumnKeyByTitle(sheet, config.dataKey);
-        const lineData = sheet.data.map(r => parseNum(r[dataKey], true));
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [{ label: config.dataKey, data: lineData, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, borderWidth: 2, tension: 0.2, pointRadius: 4 }]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { ticks: { callback: function(value) { return value + '%'; } } }
-            }
-          }
-        });
-      }
-    }
-
-    function buildChartSheet2(config, sheet) {
-      const canvas = document.getElementById(`canvas-${config.id}`);
-      if (!canvas) return;
-      if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
-      const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-      const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
-
-      if (config.type === "combo_bar_line") {
-        const barKey = getColumnKeyByTitle(sheet, config.barKey);
-        const lineKey = getColumnKeyByTitle(sheet, config.lineKey);
-        const barData = sheet.data.map(r => parseNum(r[barKey]));
-        const lineData = sheet.data.map(r => parseNum(r[lineKey], true));
-
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              { type: 'bar', label: config.barKey, data: barData, backgroundColor: 'rgba(2, 132, 199, 0.75)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
-              { type: 'line', label: config.lineKey, data: lineData, borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
-            ]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額 (NT$)' } },
-              y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: function(v) { return v + '%'; } }, title: { display: true, text: '佔比 (%)' } }
-            }
-          }
-        });
-      } else if (config.type === "double_line") {
-        const line1Key = getColumnKeyByTitle(sheet, config.line1Key);
-        const line2Key = getColumnKeyByTitle(sheet, config.line2Key);
-        const data1 = sheet.data.map(r => parseNum(r[line1Key]));
-        const data2 = sheet.data.map(r => parseNum(r[line2Key]));
-
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              { label: config.line1Key, data: data1, borderColor: '#06b6d4', backgroundColor: '#06b6d4', borderWidth: 2, tension: 0.2, pointRadius: 4 },
-              { label: config.line2Key, data: data2, borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2, tension: 0.2, pointRadius: 4 }
-            ]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { type: 'linear', display: true, title: { display: true, text: '金額 (NT$)' } }
-            }
-          }
-        });
-      }
-    }
+      if (window.chartInstances[cp.id]) window.chartInstances[cp.id].destroy();
+      window.chartInstances[cp.id] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [{ label: cp.title, data: barVal, backgroundColor: '#0284c7' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    };
 
     window.exportChartToPNG = function(chartId, title) {
-      const element = document.getElementById(`export-area-${chartId}`);
-      if (!element) return;
-      html2canvas(element, { scale: 2 }).then(canvas => {
+      const area = document.getElementById(`export-area-${chartId}`);
+      if (!area) return;
+      html2canvas(area, { scale: 2 }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `${title.replace(/[^\w\u4e00-\u9fa5]/g, '_')}.png`;
+        link.download = `${title}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-      }).catch(err => {
-        alert("匯出圖片失敗，請稍後再試！");
       });
     };
   </script>
