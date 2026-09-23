@@ -968,44 +968,135 @@
       }
     }
 
-    // 全方位修復欄位尋找與比對 logic
-    function findValByTitle(sheet, row, keyKeyword) {
-      if (!sheet || !row) return 0;
+   // 1. 強效數值解析（可自動處理千分號、百分比、小數及空字串）
+function parseNum(val) {
+  if (val === undefined || val === null || val === "-" || val === "") return 0;
+  
+  let str = String(val).trim()
+    .replace(/,/g, '')
+    .replace(/NT\$/g, '')
+    .replace(/\$/g, '');
+  
+  // 處理百分比 (例如 "0.5%" 轉成 0.5)
+  let isPercent = str.includes('%');
+  str = str.replace(/%/g, '');
+  
+  let num = parseFloat(str);
+  if (isNaN(num)) return 0;
 
-      // 1. 直接比對 row 物件的鍵 (key / header)
-      if (row[keyKeyword] !== undefined) return row[keyKeyword];
+  return num;
+}
 
-      const sheetCols = sheet.columns || [];
-      
-      // 2. 透過 title 模糊比對
-      const targetColByTitle = sheetCols.find(c => c.title && c.title.trim().includes(keyKeyword.trim()));
-      if (targetColByTitle && row[targetColByTitle.key] !== undefined) {
-        return row[targetColByTitle.key];
-      }
+// 2. 多重模糊比對欄位值（解決 Key/Title 對不上的問題）
+function findValByTitle(sheet, row, keyKeyword) {
+  if (!sheet || !row) return 0;
 
-      // 3. 備用：若找不到，檢查所有欄位內是否有相似關鍵字
-      for (let k in row) {
-        if (k.includes(keyKeyword)) return row[k];
-      }
+  // 整理關鍵字（去除空白與特殊字元）
+  const cleanKeyword = keyKeyword.replace(/\s+/g, '').toLowerCase();
 
-      return 0;
+  // (A) 先從 columns 中尋找 title 或 key 包含關鍵字的欄位 key
+  const sheetCols = sheet.columns || [];
+  const targetCol = sheetCols.find(c => {
+    const t = (c.title || '').replace(/\s+/g, '').toLowerCase();
+    const k = (c.key || '').replace(/\s+/g, '').toLowerCase();
+    return t.includes(cleanKeyword) || k.includes(cleanKeyword);
+  });
+
+  if (targetCol && row[targetCol.key] !== undefined) {
+    return row[targetCol.key];
+  }
+
+  // (B) 直接在 row 物件的所有屬性鍵值中尋找
+  for (let k in row) {
+    const cleanK = k.replace(/\s+/g, '').toLowerCase();
+    if (cleanK.includes(cleanKeyword)) {
+      return row[k];
     }
+  }
 
-    // 全方位數值清理與轉譯，可處理 %、NT$、千分號等情況
-    function parseNum(val) {
-      if (val === undefined || val === null || val === "-") return 0;
-      let str = String(val).replace(/,/g, '').replace(/NT\$/g, '').replace(/\$/g, '').trim();
-      
-      // 若為百分比格式 (例如 15.5%)
-      let isPercent = str.includes('%');
-      str = str.replace(/%/g, '');
-      
-      let num = parseFloat(str);
-      if (isNaN(num)) return 0;
+  return 0;
+}
 
-      return isPercent ? num : num;
-    }
+// 3. 修正 Chart.js 繪製與 Y 軸自動縮放 (以 buildChartSheet2 為例)
+function buildChartSheet2(chartConfig, currentSheet) {
+  const canvas = document.getElementById(`canvas-${chartConfig.id}`);
+  if (!canvas) return;
 
+  const dataSheet = currentSheet.data;
+  if (!dataSheet || dataSheet.length === 0) return;
+
+  const labels = dataSheet.map(r => r.month || r["月份/時間"] || r[Object.keys(r)[0]] || "");
+
+  if (chartInstances[chartConfig.id]) {
+    chartInstances[chartConfig.id].destroy();
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  if (chartConfig.type === "combo_bar_line") {
+    const barVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.barKey)));
+    const lineVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.lineKey)));
+
+    // 除錯確認：請開瀏覽器 Console (F12) 查看是否有抓到非 0 數值
+    console.log(`[${chartConfig.title}] Bar Data:`, barVals);
+    console.log(`[${chartConfig.title}] Line Data:`, lineVals);
+
+    chartInstances[chartConfig.id] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { 
+            label: chartConfig.barKey, 
+            data: barVals, 
+            backgroundColor: 'rgba(2, 132, 199, 0.7)', 
+            borderColor: '#0284c7', 
+            borderWidth: 1, 
+            yAxisID: 'y' 
+          },
+          { 
+            label: chartConfig.lineKey, 
+            data: lineVals, 
+            type: 'line', 
+            borderColor: '#b91c1c', 
+            backgroundColor: '#b91c1c', 
+            borderWidth: 2, 
+            pointRadius: 4, 
+            yAxisID: 'y1' 
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+          y: { 
+            type: 'linear', 
+            position: 'left', 
+            beginAtZero: true, // 確保零點為底
+            ticks: { color: '#0284c7', font: { size: 10 } }, 
+            grid: { color: '#e2e8f0' } 
+          },
+          y1: { 
+            type: 'linear', 
+            position: 'right', 
+            beginAtZero: true,
+            grid: { drawOnChartArea: false }, 
+            ticks: { 
+              color: '#b91c1c', 
+              font: { size: 10 },
+              callback: v => v + '%' 
+            } 
+          }
+        },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+      },
+      plugins: [yearSeparatorPlugin]
+    });
+  }
+  // double_line 等其它類型以此類推...
+}
     function exportChartToPNG(chartId, title) {
       const element = document.getElementById(`export-area-${chartId}`);
       if (!element) return;
