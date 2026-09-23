@@ -37,10 +37,15 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .header-title-group { display: flex; align-items: center; gap: 12px; }
+    
+    /* Logo 樣式：支援圖片與圖示切換 */
     .logo-container {
-      width: 36px; height: 36px; background: #0284c7; border-radius: 6px;
+      width: 38px; height: 38px; background: #0284c7; border-radius: 6px;
       display: flex; align-items: center; justify-content: center; color: #fff;
+      cursor: pointer; overflow: hidden; position: relative;
     }
+    .logo-container img { width: 100%; height: 100%; object-fit: cover; }
+    
     .badge-enterprise { background: #4f46e5; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     h1.system-title { color: #0f172a; font-size: 20px; font-weight: 800; }
 
@@ -55,45 +60,45 @@
     .btn:hover { background-color: #0369a1; }
     .btn-light { background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1; }
     .btn-light:hover { background-color: #f8fafc; color: #0f172a; }
-    .btn-success { background-color: #10b981; color: #fff; }
-    .btn-success:hover { background-color: #059669; }
     .btn-danger { background-color: #ef4444; color: #fff; }
     .btn-danger:hover { background-color: #dc2626; }
     .btn:disabled, .btn-light.disabled { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; }
 
+    /* 工作表垂直堆疊選單 */
     .nav-tabs-container {
-      background-color: #ffffff; padding: 10px 24px 0 24px;
-      display: flex; justify-content: space-between; align-items: center;
+      background-color: #ffffff; padding: 12px 24px;
+      display: flex; flex-direction: column; gap: 8px;
       border-bottom: 1px solid #cbd5e1;
     }
-    .sheet-tabs { display: flex; gap: 6px; align-items: center; overflow-x: auto; flex: 1; }
+    .sheet-tabs { display: flex; flex-direction: column; gap: 6px; width: 100%; }
     
     .tab-item {
-      background: #e2e8f0; color: #475569; padding: 8px 14px; border-radius: 6px 6px 0 0;
-      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
-      border: 1px solid #cbd5e1; border-bottom: none; white-space: nowrap; user-select: none;
-      font-weight: 500;
+      background: #00a8e8; color: #ffffff; padding: 10px 16px; border-radius: 4px;
+      font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      border: none; white-space: nowrap; user-select: none; font-weight: bold; width: fit-content;
+      min-width: 140px;
     }
-    .tab-item.active { background: #0284c7; color: #ffffff; font-weight: bold; border-color: #0284c7; }
-    
-    .tab-item.chart-tab { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
-    .tab-item.chart-tab.active { background: #7e22ce; color: #ffffff; border-color: #7e22ce; }
+    .tab-item.active { background: #0077b6; color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+
+    .tab-edit-icon { font-size: 12px; margin-left: 8px; cursor: pointer; opacity: 0.8; }
+    .tab-edit-icon:hover { opacity: 1; color: #fef08a; }
 
     .tab-delete-btn {
-      font-size: 10px; color: #94a3b8; border-radius: 50%; padding: 2px 4px;
-      transition: all 0.2s;
+      font-size: 12px; color: #ffffff; border-radius: 50%; padding: 2px 5px;
+      transition: all 0.2s; margin-left: 8px;
     }
-    .tab-delete-btn:hover { background: #ef4444; color: #fff; }
+    .tab-delete-btn:hover { background: #ef4444; }
 
     .btn-add-tab {
-      background: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; padding: 6px 12px;
-      border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+      background: #f1f5f9; color: #475569; border: 1px dashed #cbd5e1; padding: 6px 12px;
+      border-radius: 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      width: fit-content; margin-top: 4px;
     }
     .btn-add-tab:hover { background: #e2e8f0; color: #0f172a; }
 
-    .content-container { flex: 1; overflow: auto; padding: 20px 24px; background-color: #f8fafc; }
+    .content-container { flex: 1; overflow-y: auto; padding: 20px 24px; background-color: #f8fafc; }
 
-    table.custom-table { width: 100%; border-collapse: collapse; font-size: 12px; color: #334155; text-align: left; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    table.custom-table { width: 100%; border-collapse: collapse; font-size: 12px; color: #334155; text-align: left; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 24px; }
     table.custom-table th {
       background-color: #f1f5f9; color: #0f172a; padding: 12px 10px; border-bottom: 2px solid #cbd5e1;
       white-space: nowrap; font-weight: 700; position: sticky; top: 0; z-index: 10;
@@ -101,23 +106,31 @@
     table.custom-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
     table.custom-table tr:hover { background-color: #f8fafc; }
 
+    /* 分析圖表區塊樣式 */
+    .charts-section-title {
+      font-size: 16px; font-weight: 800; color: #0f172a; margin: 24px 0 12px 0;
+      display: flex; align-items: center; gap: 8px; border-left: 4px solid #7e22ce; padding-left: 8px;
+    }
+
+    .charts-grid { display: flex; flex-direction: column; gap: 24px; margin-bottom: 40px; }
+
     .chart-page {
-      display: flex; flex-direction: column; gap: 16px; background: #ffffff; padding: 24px;
-      border-radius: 8px; border: 1px solid #e2e8f0; height: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      display: flex; flex-direction: column; gap: 16px; background: #ffffff; padding: 20px;
+      border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .chart-header { display: flex; justify-content: space-between; align-items: center; }
-    .chart-title { color: #0f172a; font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .chart-title { color: #0f172a; font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
     
     .chart-wrapper {
-      flex: 1; position: relative; width: 100%; min-height: 400px;
-      background: #ffffff; padding: 16px; border-radius: 6px; border: 1px solid #cbd5e1;
+      position: relative; width: 100%; height: 380px;
+      background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;
     }
     .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
     .status-badge.loading { background: #fef3c7; color: #d97706; }
     .status-badge.success { background: #dcfce7; color: #15803d; }
     .status-badge.read-only { background: #e2e8f0; color: #475569; }
 
-    /* 管理員登入 Modal 彈窗 CSS */
+    /* Modal 彈窗 */
     .modal-overlay {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(15, 23, 42, 0.5); z-index: 1000; justify-content: center; align-items: center;
@@ -138,7 +151,10 @@
 
   <header>
     <div class="header-title-group">
-      <div class="logo-container"><i class="fa-solid fa-chart-line"></i></div>
+      <!-- 點擊圖片/圖示可輸入網址變更 Logo -->
+      <div class="logo-container" id="logo-box" onclick="changeLogoUrl()" title="點擊輸入圖片網址">
+        <i class="fa-solid fa-chart-line" id="logo-icon"></i>
+      </div>
       <div>
         <div style="display:flex; align-items:center; gap:8px;">
           <span class="badge-enterprise">CLOUD ENTERPRISE</span>
@@ -148,7 +164,7 @@
       </div>
     </div>
 
-    <!-- 右上角登入控制區域 -->
+    <!-- 登入控制區塊 -->
     <div class="user-profile-bar">
       <span id="user-name" class="user-name"><i class="fa-solid fa-user-check"></i> <span id="user-email-text"></span></span>
       <button id="auth-btn" class="btn btn-light">
@@ -158,19 +174,23 @@
   </header>
 
   <div class="nav-tabs-container">
-    <div class="sheet-tabs" id="sheet-tabs-list"></div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <button id="btn-add-tab" class="btn-add-tab" onclick="addNewSheet()"><i class="fa-solid fa-plus"></i> 新增工作表</button>
-      <label id="btn-import-excel" class="btn btn-light" style="cursor:pointer; margin-left: 6px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <span style="font-size: 12px; font-weight: bold; color: #64748b;">工作表清單：</span>
+      <label id="btn-import-excel" class="btn btn-light" style="cursor:pointer;">
         <i class="fa-solid fa-file-import"></i> 匯入 Excel 覆蓋
         <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
       </label>
     </div>
+    
+    <!-- 工作表垂直向下排列區塊 -->
+    <div class="sheet-tabs" id="sheet-tabs-list"></div>
+    
+    <button id="btn-add-tab" class="btn-add-tab" onclick="addNewSheet()"><i class="fa-solid fa-plus"></i> 新增工作表</button>
   </div>
 
   <div class="content-container" id="main-content"></div>
 
-  <!-- 管理員登入視窗 Modal -->
+  <!-- 管理員登入 Modal -->
   <div class="modal-overlay" id="login-modal">
     <div class="modal-card">
       <div class="modal-title"><i class="fa-solid fa-lock"></i> 管理員登入</div>
@@ -214,7 +234,6 @@
 
     window.currentUser = null;
 
-    // 監聽登入狀態變更
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
       const authBtn = document.getElementById('auth-btn');
@@ -242,12 +261,9 @@
       }
       
       window.renderTabs();
-      if (window.activeTabId && !window.activeTabId.startsWith('chart_')) {
-        window.renderTable(document.getElementById('main-content'));
-      }
+      window.renderMainContent();
     });
 
-    // 點擊登入按鈕開啟彈窗
     document.getElementById('auth-btn').addEventListener('click', () => {
       if (window.currentUser) {
         signOut(auth).then(() => alert('已成功登出！'));
@@ -256,7 +272,6 @@
       }
     });
 
-    // 執行管理員登入
     document.getElementById('do-login-btn').addEventListener('click', () => {
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
@@ -279,7 +294,6 @@
       document.getElementById('login-password').value = '';
     };
 
-    // 全域變數定義
     window.columns = [
       { key: "month", title: "月份/時間" },
       { key: "item_0", title: "石墨產出市值(NT$)" },
@@ -293,17 +307,16 @@
 
     window.sheets = [{ id: "s1", name: "數據資料表", data: [] }];
     window.activeSheetId = "s1";
-    window.activeTabId = "s1";
+    window.logoUrl = "";
     window.chartInstances = {};
 
     window.chartConfigs = [
-      { id: "chart_1", name: "📈 產出市值與數量趨勢圖", title: "合計產出市值(NT$) / 產出數量(PCS)", type: "combo" },
-      { id: "chart_2", name: "📊 報廢/產值分析圖", title: "報廢/產值 (2023~2026)", type: "line", dataKey: "報廢/產值" },
-      { id: "chart_3", name: "📊 刀具費/產值分析圖", title: "刀具費/產值 (2023~2026)", type: "line", dataKey: "刀具費/產值" },
-      { id: "chart_4", name: "📊 加班費/產值分析圖", title: "加班費/產值 (2023~2026)", type: "line", dataKey: "加班費/產值" }
+      { id: "chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
+      { id: "chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
+      { id: "chart_3", title: "📊 刀具費/產值 分析圖", type: "line", dataKey: "刀具費/產值" },
+      { id: "chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 同步寫入 Firestore
     window.saveToFirebase = async function() {
       if (!window.currentUser) {
         alert("權限不足！請先點擊右上角「管理員登入」再進行資料修改。");
@@ -317,17 +330,17 @@
         await setDoc(docRef, {
           columns: window.columns,
           sheets: window.sheets,
+          logoUrl: window.logoUrl,
           updatedAt: new Date().toISOString()
         });
 
         if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
       } catch (e) {
         console.error("Firebase 寫入失敗:", e);
-        alert("資料同步失敗，請確認帳號是否具備權限或 Firebase Rules 是否正確設定！");
+        alert("資料同步失敗，請確認帳號權限或 Firebase Rules！");
       }
     };
 
-    // 監聽 Firestore 即時更新
     onSnapshot(docRef, (docSnap) => {
       const statusEl = document.getElementById('firebase-status');
       if (statusEl) { 
@@ -339,10 +352,14 @@
         const data = docSnap.data();
         if (data.columns) window.columns = data.columns;
         if (data.sheets) window.sheets = data.sheets;
+        if (data.logoUrl !== undefined) {
+          window.logoUrl = data.logoUrl;
+          window.renderLogo();
+        }
       }
       
       window.renderTabs();
-      window.switchTab(window.activeTabId);
+      window.renderMainContent();
     });
 
     // Excel 匯入
@@ -416,6 +433,27 @@
   </script>
 
   <script>
+    // Logo 渲染與圖片網址變更
+    function renderLogo() {
+      const logoBox = document.getElementById('logo-box');
+      if (!logoBox) return;
+      if (logoUrl && logoUrl.trim() !== '') {
+        logoBox.innerHTML = `<img src="${logoUrl}" alt="Logo" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';" />`;
+      } else {
+        logoBox.innerHTML = `<i class="fa-solid fa-chart-line" id="logo-icon"></i>`;
+      }
+    }
+
+    function changeLogoUrl() {
+      if (!window.currentUser) return alert('請登入管理員帳號後再更換 Logo！');
+      const inputUrl = prompt("請輸入 Logo 圖示的圖片網址 (URL)：\n(清空則回復為預設圖示)", logoUrl || "");
+      if (inputUrl !== null) {
+        logoUrl = inputUrl.trim();
+        renderLogo();
+        if (window.saveToFirebase) window.saveToFirebase();
+      }
+    }
+
     function renderTabs() {
       const container = document.getElementById('sheet-tabs-list');
       if (!container) return;
@@ -424,47 +462,51 @@
       const isLogined = !!window.currentUser;
 
       sheets.forEach(s => {
-        const isActive = s.id === activeTabId ? 'active' : '';
+        const isActive = s.id === activeSheetId ? 'active' : '';
         html += `
-          <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')" ${isLogined ? `ondoubleclick="editSheetName('${s.id}')"` : ''}>
-            <i class="fa-solid fa-table"></i>
-            <span id="sheet-title-${s.id}">${s.name}</span>
-            ${(sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
+          <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')">
+            <div>
+              <i class="fa-solid fa-table" style="margin-right: 6px;"></i>
+              <span id="sheet-title-${s.id}" ${isLogined ? `ondblclick="editSheetName('${s.id}')"` : ''}>${s.name}</span>
+            </div>
+            <div>
+              ${isLogined ? `<i class="fa-solid fa-pen-to-square tab-edit-icon" title="修改名稱" onclick="event.stopPropagation(); editSheetName('${s.id}');"></i>` : ''}
+              ${(sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" title="刪除工作表" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
+            </div>
           </div>
         `;
-      });
-
-      chartConfigs.forEach(cp => {
-        const isActive = cp.id === activeTabId ? 'active' : '';
-        html += `<div class="tab-item chart-tab ${isActive}" onclick="switchTab('${cp.id}')">${cp.name}</div>`;
       });
 
       container.innerHTML = html;
     }
 
-    function switchTab(tabId) {
-      activeTabId = tabId;
-      if (!tabId.startsWith('chart_')) {
-        activeSheetId = tabId;
-      }
+    function switchTab(sheetId) {
+      activeSheetId = sheetId;
       renderTabs();
+      renderMainContent();
+    }
 
-      const container = document.getElementById('main-content');
-      if (tabId.startsWith('chart_')) {
-        const config = chartConfigs.find(c => c.id === tabId);
-        renderSingleChartPage(container, config);
-      } else {
-        renderTable(container);
+    function editSheetName(sheetId) {
+      if (!window.currentUser) return;
+      const targetSheet = sheets.find(s => s.id === sheetId);
+      const newName = prompt("請輸入新的工作表名稱：", targetSheet?.name || "");
+      if (newName && newName.trim() !== "") {
+        targetSheet.name = newName.trim();
+        if (window.saveToFirebase) window.saveToFirebase();
+        renderTabs();
+        renderMainContent();
       }
     }
 
     function addNewSheet() {
       if (!window.currentUser) return alert('請登入管理員帳號後再進行編輯！');
       const newId = `s_${Date.now()}`;
-      const newName = `工作表 ${sheets.length + 1}`;
+      const newName = `工作表${sheets.length + 1}`;
       sheets.push({ id: newId, name: newName, data: [] });
+      activeSheetId = newId;
       if (window.saveToFirebase) window.saveToFirebase();
-      switchTab(newId);
+      renderTabs();
+      renderMainContent();
     }
 
     function deleteSheet(e, sheetId) {
@@ -475,80 +517,68 @@
         sheets = sheets.filter(s => s.id !== sheetId);
         if (activeSheetId === sheetId) {
           activeSheetId = sheets[0].id;
-          activeTabId = sheets[0].id;
         }
         if (window.saveToFirebase) window.saveToFirebase();
-        switchTab(activeTabId);
-      }
-    }
-
-    function editSheetName(sheetId) {
-      if (!window.currentUser) return;
-      const titleSpan = document.getElementById(`sheet-title-${sheetId}`);
-      if (!titleSpan) return;
-      const currentName = titleSpan.innerText;
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = currentName;
-      input.style.cssText = "width: 80px; font-size: 12px; border: 1px solid #0284c7; border-radius: 2px; padding: 0 4px;";
-      
-      titleSpan.replaceWith(input);
-      input.focus();
-
-      const saveName = () => {
-        const newName = input.value.trim() || currentName;
-        const targetSheet = sheets.find(s => s.id === sheetId);
-        if (targetSheet) targetSheet.name = newName;
-        if (window.saveToFirebase) window.saveToFirebase();
         renderTabs();
-      };
-
-      input.addEventListener('blur', saveName);
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveName(); });
+        renderMainContent();
+      }
     }
 
-    function renderTable(container) {
+    // 主畫面渲染 (上為表格、下為分析圖表)
+    function renderMainContent() {
+      const container = document.getElementById('main-content');
       const currentSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
-      if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 60px; color:#94a3b8; background:#fff; border-radius:8px;">目前工作表無資料。${window.currentUser ? '請點擊右上角「匯入 Excel 覆蓋」' : '（請點擊右上角「管理員登入」以匯入或修改資料）'}</div>`;
-        return;
-      }
-
       const isLogined = !!window.currentUser;
 
-      let html = `<table class="custom-table"><thead><tr>`;
-      columns.forEach(col => { html += `<th>${col.title}</th>`; });
-      html += `</tr></thead><tbody>`;
+      let html = '';
 
-      currentSheet.data.forEach(row => {
-        html += `<tr>`;
-        columns.forEach(col => { html += `<td ${isLogined ? 'contenteditable="true"' : ''}>${row[col.key] || '-'}</td>`; });
-        html += `</tr>`;
-      });
-      html += `</tbody></table>`;
-      container.innerHTML = html;
-    }
+      // 1. 數據表格
+      if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
+        html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。${isLogined ? '請點擊上方「匯入 Excel 覆蓋」' : '（請登入管理員帳號以匯入或修改資料）'}</div>`;
+      } else {
+        html += `<table class="custom-table"><thead><tr>`;
+        columns.forEach(col => { html += `<th>${col.title}</th>`; });
+        html += `</tr></thead><tbody>`;
 
-    function renderSingleChartPage(container, chartConfig) {
-      const currentSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
-      container.innerHTML = `
-        <div class="chart-page" id="export-area-${chartConfig.id}">
-          <div class="chart-header">
-            <div class="chart-title">
-              <i class="fa-solid fa-chart-area" style="color:#7e22ce;"></i> ${chartConfig.title} 
-              <span style="font-size: 12px; color: #64748b; font-weight: normal;">(來自：${currentSheet.name})</span>
-            </div>
-            <button class="btn btn-success" onclick="exportChartToPNG('${chartConfig.id}', '${chartConfig.title}')">
-              <i class="fa-solid fa-download"></i> 匯出 PNG 圖片
-            </button>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="canvas-${chartConfig.id}"></canvas>
-          </div>
+        currentSheet.data.forEach(row => {
+          html += `<tr>`;
+          columns.forEach(col => { html += `<td ${isLogined ? 'contenteditable="true"' : ''}>${row[col.key] || '-'}</td>`; });
+          html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+      }
+
+      // 2. 下方圖表區塊
+      html += `
+        <div class="charts-section-title">
+          <i class="fa-solid fa-chart-line"></i> 分析圖表 (資料來源：${currentSheet.name})
         </div>
+        <div class="charts-grid">
       `;
 
-      setTimeout(() => { buildChart(chartConfig, currentSheet); }, 100);
+      chartConfigs.forEach(cp => {
+        html += `
+          <div class="chart-page" id="export-area-${cp.id}">
+            <div class="chart-header">
+              <div class="chart-title"><i class="fa-solid fa-chart-area" style="color:#7e22ce;"></i> ${cp.title}</div>
+              <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')">
+                <i class="fa-solid fa-download"></i> 匯出 PNG 圖片
+              </button>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="canvas-${cp.id}"></canvas>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+      container.innerHTML = html;
+
+      // 渲染所有 Chart 圖表
+      setTimeout(() => {
+        chartConfigs.forEach(cp => buildChart(cp, currentSheet));
+      }, 100);
     }
 
     function buildChart(chartConfig, currentSheet) {
@@ -593,7 +623,6 @@
       } else {
         const lineValues = dataSheet.map(r => parseNum(findValByTitle(r, chartConfig.dataKey)));
 
-        // 僅保留年份黑色分隔線的外掛 (已移除藍色虛線與平均紅字)
         const yearSeparatorPlugin = {
           id: 'yearSeparatorPlugin',
           afterDraw(chart) {
@@ -619,7 +648,6 @@
                 const currFirstX = x.getPixelForValue(currFirstIdx);
                 const separatorX = (prevLastX + currFirstX) / 2;
 
-                // 畫黑色垂直分隔線
                 ctx.beginPath();
                 ctx.setLineDash([]);
                 ctx.strokeStyle = '#000000';
