@@ -590,33 +590,36 @@
       }
     };
 
-    function renderTreemap(sheet) {
-      const container = document.getElementById('treemap-container');
-      if (!container) return;
-      let items = sheet.data.map(row => {
+function renderTreemap(sheet) {
+    const container = document.getElementById('treemap-container');
+    if (!container) return;
+    let items = sheet.data.map(row => {
         const cust = row.customer || row.客戶 || '未知';
         const totalVal = parseNum(row.total || row.總計 || 0);
         return { customer: cust, value: totalVal };
-      }).filter(item => item.value > 0);
+    }).filter(item => item.value > 0);
 
-      items.sort((a, b) => b.value - a.value);
-      const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
-      const colors = ['#1d4ed8', '#b91c1c', '#b45309', '#047857', '#0e7490', '#6d28d9', '#be185d', '#334155', '#475569'];
+    items.sort((a, b) => b.value - a.value);
+    const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
+    const colors = ['#1d4ed8', '#b91c1c', '#b45309', '#047857', '#0e7490', '#6d28d9', '#be185d', '#334155', '#475569', '#0284c7', '#0d9488'];
 
-      let html = '';
-      items.forEach((item, idx) => {
+    let html = '';
+    items.forEach((item, idx) => {
         const percentage = grandTotal > 0 ? ((item.value / grandTotal) * 100).toFixed(2) + '%' : '0%';
         const bg = colors[idx % colors.length];
-        let flexGrow = Math.max(Math.round((item.value / grandTotal) * 100), 5);
+        let flexGrow = Math.max(Math.round((item.value / grandTotal) * 100), 4);
         html += `
-          <div style="flex: ${flexGrow} 1 ${flexGrow > 20 ? '45%' : '20%'}; background: ${bg}; border-radius: 6px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); min-height: 120px;">
-            <div style="font-size: 28px; font-weight: bold; letter-spacing: 0.5px;">${percentage}</div>
-            <div style="font-size: 20px; font-weight: 600; opacity: 0.95;">${item.customer}</div>
+          <div style="flex: ${flexGrow} 1 ${flexGrow > 20 ? '40%' : '18%'}; background: ${bg}; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); min-height: 90px;">
+            <div style="font-size: 22px; font-weight: bold; letter-spacing: 0.5px;">${percentage}</div>
+            <div style="font-size: 16px; font-weight: 600; opacity: 0.95;">${item.customer}</div>
           </div>
         `;
-      });
-      container.innerHTML = html;
-    }
+    });
+    
+    // 將外層容器高度從 480px 調整為 620px
+    container.style.height = '620px';
+    container.innerHTML = html;
+}
 
     const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
