@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雲端線上試算表系統 (Firebase + Luckysheet)</title>
+  
+  <!-- Luckysheet CSS & JS -->
+  <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/css/pluginsCss.css' />
+  <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/plugins.css' />
+  <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/css/luckysheet.css' />
+  <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/assets/iconfont/iconfont.css' />
+  
+  <script src="https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/js/plugin.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/luckysheet.umd.js"></script>
+  
+  <!-- SheetJS (用於 Excel 匯入匯出) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+    
+    /* 工具列樣式 */
+    #toolbar {
+      background-color: #1e293b;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    .btn-group { display: flex; gap: 8px; align-items: center; }
+    button, label.btn-label {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    button:hover, label.btn-label:hover { background-color: #2563eb; }
+    button.btn-danger { background-color: #ef4444; }
+    button.btn-danger:hover { background-color: #dc2626; }
+    button.btn-success { background-color: #10b981; }
+    button.btn-success:hover { background-color: #059669; }
+    button:disabled { background-color: #64748b; cursor: not-allowed; }
+    
+    #user-info { font-size: 14px; color: #cbd5e1; }
+    #luckysheet { width: 100%; flex: 1; margin: 0px; padding: 0px; position: absolute; top: 55px; left: 0px; bottom: 0px; }
+  </style>
+</head>
+<body>
+
+  <!-- 頂部功能工具列 -->
+  <div id="toolbar">
+    <div class="btn-group">
+      <strong style="font-size: 16px; margin-right: 10px; color: #38bdf8;">📊 雲端試算表系統</strong>
+      
+      <!-- Excel 檔案操作 -->
+      <label class="btn-label">
+        📂 匯入 Excel
+        <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
+      </label>
+      <button onclick="exportToExcel()" class="btn-success">📥 匯出 Excel</button>
+      
+      <!-- Firebase 雲端操作 -->
+      <button id="btn-save" onclick="saveToFirebase()" class="btn-success" disabled>☁️ 儲存至雲端</button>
+      <button id="btn-load" onclick="loadFromFirebase()" disabled>🔄 從雲端讀取</button>
+    </div>
+
+    <!-- 使用者登入狀態與控制 -->
+    <div class="btn-group">
+      <span id="user-info">未登入（僅能預覽，寫入請先登入）</span>
+      <button id="btn-login" onclick="loginWithGoogle()">🔑 Google 登入</button>
+      <button id="btn-logout" onclick="logout()" class="btn-danger" style="display: none;">🚪 登出</button>
+    </div>
+  </div>
+
+  <!-- Luckysheet 容器 -->
+  <div id="luckysheet"></div>
+
+  <!-- Firebase v9 SDK (Modules) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ⚠️ 請替換為您自己的 Firebase 專案設定 ⚠️
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // 初始化 Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+
+    // 監聽登入狀態變更
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      const userInfo = document.getElementById('user-info');
+      const btnLogin = document.getElementById('btn-login');
+      const btnLogout = document.getElementById('btn-logout');
+      const btnSave = document.getElementById('btn-save');
+      const btnLoad = document.getElementById('btn-load');
+
+      if (user) {
+        userInfo.innerText = `👤 登入者：${user.displayName || user.email}`;
+        btnLogin.style.display = 'none';
+        btnLogout.style.display = 'inline-block';
+        btnSave.disabled = false;
+        btnLoad.disabled = false;
+      } else {
+        userInfo.innerText = '未登入（登入後即可雲端儲存）';
+        btnLogin.style.display = 'inline-block';
+        btnLogout.style.display = 'none';
+        btnSave.disabled = true;
+        btnLoad.disabled = true;
+      }
+    });
+
+    // Google 登入
+    window.loginWithGoogle = async () => {
+      try {
+        await signInWithPopup(auth, provider);
+        alert('登入成功！');
+      } catch (err) {
+        alert('登入失敗：' + err.message);
+      }
+    };
+
+    // 登出
+    window.logout = async () => {
+      await signOut(auth);
+      alert('已成功登出');
+    };
+
+    // 儲存至 Firebase Firestore
+    window.saveToFirebase = async () => {
+      if (!currentUser) return alert('請先登入系統！');
+      
+      try {
+        // 取得 Luckysheet 完整 JSON 資料 (包含所有 Sheet、公式、儲存格格式與顏色)
+        const sheetData = luckysheet.getluckysheetfile();
+        
+        // 儲存到 Firestore 'sheets' 集合中的 'default_sheet' 文件
+        await setDoc(doc(db, "sheets", "default_sheet"), {
+          data: JSON.stringify(sheetData),
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser.email
+        });
+
+        alert('☁️ 資料已成功同步並儲存至 Firebase 雲端！');
+      } catch (err) {
+        console.error(err);
+        alert('儲存失敗：' + err.message);
+      }
+    };
+
+    // 從 Firebase 載入
+    window.loadFromFirebase = async () => {
+      if (!currentUser) return alert('請先登入系統！');
+
+      try {
+        const docRef = doc(db, "sheets", "default_sheet");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const rawData = docSnap.data().data;
+          const sheets = JSON.parse(rawData);
+          
+          // 重新初始化 Luckysheet
+          luckysheet.destroy();
+          luckysheet.create({
+            container: 'luckysheet',
+            lang: 'zh',
+            data: sheets,
+            showinfobar: false
+          });
+          alert('🔄 已成功從雲端載入最新資料！');
+        } else {
+          alert('雲端目前無儲存資料。');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('載入失敗：' + err.message);
+      }
+    };
+  </script>
+
+  <!-- Luckysheet 初始化與 Excel 匯入/匯出邏輯 -->
+  <script>
+    $(function () {
+      // 初始化 Luckysheet 預設空白表格
+      luckysheet.create({
+        container: 'luckysheet',
+        title: '雲端試算表',
+        lang: 'zh',
+        showinfobar: false,
+        allowUpdate: true,
+        enableAddRow: true,
+        enableAddBackTop: true,
+        // 允許拖移與欄列操作
+        enableRowColumnHeader: true,
+        sheetFormulaBar: true
+      });
+    });
+
+    // 讀取/匯入 本地 Excel 檔 (.xlsx)
+    document.getElementById('upload-excel').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const newSheets = [];
+
+        workbook.SheetNames.forEach((sheetName, index) => {
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // 轉換為 Luckysheet celery 格式
+          const celldata = [];
+          json.forEach((row, r) => {
+            row.forEach((val, c) => {
+              if (val !== null && val !== undefined) {
+                celldata.push({
+                  r: r,
+                  c: c,
+                  v: { v: val, m: String(val) }
+                });
+              }
+            });
+          });
+
+          newSheets.push({
+            name: sheetName,
+            status: index === 0 ? 1 : 0,
+            order: index,
+            celldata: celldata
+          });
+        });
+
+        // 銷毀現有並載入新數據
+        luckysheet.destroy();
+        luckysheet.create({
+          container: 'luckysheet',
+          lang: 'zh',
+          data: newSheets,
+          showinfobar: false
+        });
+
+        alert('成功匯入 Excel 檔案！');
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 匯出當前表格為 Excel (.xlsx) 檔案
+    function exportToExcel() {
+      const sheets = luckysheet.getluckysheetfile();
+      const wb = XLSX.utils.book_new();
+
+      sheets.forEach(sheet => {
+        const data = luckysheet.getsheetdata(sheet.index || 0);
+        const matrix = [];
+
+        data.forEach(row => {
+          const rowData = [];
+          row.forEach(cell => {
+            if (cell && cell.v !== undefined) {
+              rowData.push(cell.m !== undefined ? cell.m : cell.v);
+            } else {
+              rowData.push("");
+            }
+          });
+          matrix.push(rowData);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(matrix);
+        XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+      });
+
+      XLSX.writeFile(wb, `雲端匯出試算表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+  </script>
+</body>
+</html>
