@@ -174,7 +174,7 @@
       display: flex; align-items: center; gap: 8px; border-left: 4px solid #7e22ce; padding-left: 8px;
     }
 
-    /* 2 欄位雙排圖表版面配置 */
+    /* 雙排圖表版面配置 */
     .charts-grid-2col {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -835,6 +835,57 @@
       }
     };
 
+    // 強效數值解析器（自動處理千分號、百分比、錢號）
+    function parseNum(val) {
+      if (val === undefined || val === null || val === "-" || val === "") return 0;
+      
+      let str = String(val).trim()
+        .replace(/,/g, '')
+        .replace(/NT\$/g, '')
+        .replace(/\$/g, '');
+      
+      let isPercent = str.includes('%');
+      str = str.replace(/%/g, '');
+      
+      let num = parseFloat(str);
+      if (isNaN(num)) return 0;
+
+      return num;
+    }
+
+    // 多重強效欄位尋找與比對（解開 Key 與 Title 匹配失敗的問題）
+    function findValByTitle(sheet, row, keyKeyword) {
+      if (!sheet || !row) return 0;
+
+      // 1. 若 row 物件本身就有包含該關鍵字的 key
+      if (row[keyKeyword] !== undefined) return row[keyKeyword];
+
+      // 2. 正規化搜尋關鍵字 (去空格、轉小寫)
+      const cleanKeyword = keyKeyword.replace(/\s+/g, '').toLowerCase();
+
+      // 3. 透過 sheet.columns 尋找標題匹配
+      const sheetCols = sheet.columns || [];
+      const targetCol = sheetCols.find(c => {
+        const t = (c.title || '').replace(/\s+/g, '').toLowerCase();
+        const k = (c.key || '').replace(/\s+/g, '').toLowerCase();
+        return t.includes(cleanKeyword) || k.includes(cleanKeyword);
+      });
+
+      if (targetCol && row[targetCol.key] !== undefined) {
+        return row[targetCol.key];
+      }
+
+      // 4. 備用方案：對 row 物件屬性名稱做全模糊比對
+      for (let k in row) {
+        const cleanK = k.replace(/\s+/g, '').toLowerCase();
+        if (cleanK.includes(cleanKeyword)) {
+          return row[k];
+        }
+      }
+
+      return 0;
+    }
+
     function buildChartSheet1(chartConfig, currentSheet) {
       const canvas = document.getElementById(`canvas-${chartConfig.id}`);
       if (!canvas) return;
@@ -842,7 +893,7 @@
       const dataSheet = currentSheet.data;
       if (!dataSheet || dataSheet.length === 0) return;
 
-      const labels = dataSheet.map(r => r.month || r["月份/時間"] || "");
+      const labels = dataSheet.map(r => r.month || r["月份/時間"] || r[Object.keys(r)[0]] || "");
 
       if (chartInstances[chartConfig.id]) {
         chartInstances[chartConfig.id].destroy();
@@ -867,8 +918,8 @@
             responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#334155' }, grid: { color: '#cbd5e1' } },
-              y: { type: 'linear', position: 'left', ticks: { color: '#0284c7' }, grid: { color: '#cbd5e1' } },
-              y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+              y: { type: 'linear', position: 'left', beginAtZero: true, ticks: { color: '#0284c7' }, grid: { color: '#cbd5e1' } },
+              y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
             },
             plugins: { legend: { labels: { color: '#0f172a' } } }
           },
@@ -892,7 +943,7 @@
             responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#334155' }, grid: { color: '#e2e8f0' } },
-              y: { ticks: { color: '#334155' }, grid: { color: '#e2e8f0' } }
+              y: { beginAtZero: true, ticks: { color: '#334155' }, grid: { color: '#e2e8f0' } }
             },
             plugins: { legend: { labels: { color: '#0f172a' } } }
           },
@@ -908,7 +959,7 @@
       const dataSheet = currentSheet.data;
       if (!dataSheet || dataSheet.length === 0) return;
 
-      const labels = dataSheet.map(r => r.month || r["月份/時間"] || "");
+      const labels = dataSheet.map(r => r.month || r["月份/時間"] || r[Object.keys(r)[0]] || "");
 
       if (chartInstances[chartConfig.id]) {
         chartInstances[chartConfig.id].destroy();
@@ -920,21 +971,31 @@
         const barVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.barKey)));
         const lineVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.lineKey)));
 
+        // 控制台 Debug 輸出
+        console.log(`[${chartConfig.title}] Bar (${chartConfig.barKey}):`, barVals);
+        console.log(`[${chartConfig.title}] Line (${chartConfig.lineKey}):`, lineVals);
+
         chartInstances[chartConfig.id] = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: labels,
             datasets: [
               { label: chartConfig.barKey, data: barVals, backgroundColor: 'rgba(2, 132, 199, 0.7)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
-              { label: chartConfig.lineKey, data: lineVals, type: 'line', borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 3, yAxisID: 'y1' }
+              { label: chartConfig.lineKey, data: lineVals, type: 'line', borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 4, yAxisID: 'y1' }
             ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
-              y: { type: 'linear', position: 'left', ticks: { color: '#0284c7', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
-              y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#b91c1c', font: { size: 10 }, callback: v => v + '%' } }
+              y: { type: 'linear', position: 'left', beginAtZero: true, ticks: { color: '#0284c7', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+              y1: { 
+                type: 'linear', 
+                position: 'right', 
+                beginAtZero: true,
+                grid: { drawOnChartArea: false }, 
+                ticks: { color: '#b91c1c', font: { size: 10 }, callback: v => v + '%' } 
+              }
             },
             plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
           },
@@ -945,21 +1006,25 @@
         const line1Vals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.line1Key)));
         const line2Vals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.line2Key)));
 
+        // 控制台 Debug 輸出
+        console.log(`[${chartConfig.title}] Line1 (${chartConfig.line1Key}):`, line1Vals);
+        console.log(`[${chartConfig.title}] Line2 (${chartConfig.line2Key}):`, line2Vals);
+
         chartInstances[chartConfig.id] = new Chart(ctx, {
           type: 'line',
           data: {
             labels: labels,
             datasets: [
-              { label: chartConfig.line1Key, data: line1Vals, borderColor: '#0284c7', backgroundColor: '#0284c7', borderWidth: 2, pointRadius: 3, tension: 0.1, yAxisID: 'y' },
-              { label: chartConfig.line2Key, data: line2Vals, borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 3, tension: 0.1, yAxisID: 'y1' }
+              { label: chartConfig.line1Key, data: line1Vals, borderColor: '#0284c7', backgroundColor: '#0284c7', borderWidth: 2, pointRadius: 4, tension: 0.1, yAxisID: 'y' },
+              { label: chartConfig.line2Key, data: line2Vals, borderColor: '#b91c1c', backgroundColor: '#b91c1c', borderWidth: 2, pointRadius: 4, tension: 0.1, yAxisID: 'y1' }
             ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
             scales: {
               x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
-              y: { type: 'linear', position: 'left', ticks: { color: '#0284c7', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
-              y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#b91c1c', font: { size: 10 } } }
+              y: { type: 'linear', position: 'left', beginAtZero: true, ticks: { color: '#0284c7', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+              y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { color: '#b91c1c', font: { size: 10 } } }
             },
             plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
           },
@@ -968,135 +1033,6 @@
       }
     }
 
-   // 1. 強效數值解析（可自動處理千分號、百分比、小數及空字串）
-function parseNum(val) {
-  if (val === undefined || val === null || val === "-" || val === "") return 0;
-  
-  let str = String(val).trim()
-    .replace(/,/g, '')
-    .replace(/NT\$/g, '')
-    .replace(/\$/g, '');
-  
-  // 處理百分比 (例如 "0.5%" 轉成 0.5)
-  let isPercent = str.includes('%');
-  str = str.replace(/%/g, '');
-  
-  let num = parseFloat(str);
-  if (isNaN(num)) return 0;
-
-  return num;
-}
-
-// 2. 多重模糊比對欄位值（解決 Key/Title 對不上的問題）
-function findValByTitle(sheet, row, keyKeyword) {
-  if (!sheet || !row) return 0;
-
-  // 整理關鍵字（去除空白與特殊字元）
-  const cleanKeyword = keyKeyword.replace(/\s+/g, '').toLowerCase();
-
-  // (A) 先從 columns 中尋找 title 或 key 包含關鍵字的欄位 key
-  const sheetCols = sheet.columns || [];
-  const targetCol = sheetCols.find(c => {
-    const t = (c.title || '').replace(/\s+/g, '').toLowerCase();
-    const k = (c.key || '').replace(/\s+/g, '').toLowerCase();
-    return t.includes(cleanKeyword) || k.includes(cleanKeyword);
-  });
-
-  if (targetCol && row[targetCol.key] !== undefined) {
-    return row[targetCol.key];
-  }
-
-  // (B) 直接在 row 物件的所有屬性鍵值中尋找
-  for (let k in row) {
-    const cleanK = k.replace(/\s+/g, '').toLowerCase();
-    if (cleanK.includes(cleanKeyword)) {
-      return row[k];
-    }
-  }
-
-  return 0;
-}
-
-// 3. 修正 Chart.js 繪製與 Y 軸自動縮放 (以 buildChartSheet2 為例)
-function buildChartSheet2(chartConfig, currentSheet) {
-  const canvas = document.getElementById(`canvas-${chartConfig.id}`);
-  if (!canvas) return;
-
-  const dataSheet = currentSheet.data;
-  if (!dataSheet || dataSheet.length === 0) return;
-
-  const labels = dataSheet.map(r => r.month || r["月份/時間"] || r[Object.keys(r)[0]] || "");
-
-  if (chartInstances[chartConfig.id]) {
-    chartInstances[chartConfig.id].destroy();
-  }
-
-  const ctx = canvas.getContext('2d');
-
-  if (chartConfig.type === "combo_bar_line") {
-    const barVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.barKey)));
-    const lineVals = dataSheet.map(r => parseNum(findValByTitle(currentSheet, r, chartConfig.lineKey)));
-
-    // 除錯確認：請開瀏覽器 Console (F12) 查看是否有抓到非 0 數值
-    console.log(`[${chartConfig.title}] Bar Data:`, barVals);
-    console.log(`[${chartConfig.title}] Line Data:`, lineVals);
-
-    chartInstances[chartConfig.id] = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          { 
-            label: chartConfig.barKey, 
-            data: barVals, 
-            backgroundColor: 'rgba(2, 132, 199, 0.7)', 
-            borderColor: '#0284c7', 
-            borderWidth: 1, 
-            yAxisID: 'y' 
-          },
-          { 
-            label: chartConfig.lineKey, 
-            data: lineVals, 
-            type: 'line', 
-            borderColor: '#b91c1c', 
-            backgroundColor: '#b91c1c', 
-            borderWidth: 2, 
-            pointRadius: 4, 
-            yAxisID: 'y1' 
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
-          y: { 
-            type: 'linear', 
-            position: 'left', 
-            beginAtZero: true, // 確保零點為底
-            ticks: { color: '#0284c7', font: { size: 10 } }, 
-            grid: { color: '#e2e8f0' } 
-          },
-          y1: { 
-            type: 'linear', 
-            position: 'right', 
-            beginAtZero: true,
-            grid: { drawOnChartArea: false }, 
-            ticks: { 
-              color: '#b91c1c', 
-              font: { size: 10 },
-              callback: v => v + '%' 
-            } 
-          }
-        },
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
-      },
-      plugins: [yearSeparatorPlugin]
-    });
-  }
-  // double_line 等其它類型以此類推...
-}
     function exportChartToPNG(chartId, title) {
       const element = document.getElementById(`export-area-${chartId}`);
       if (!element) return;
