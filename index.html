@@ -38,7 +38,6 @@
     }
     .header-title-group { display: flex; align-items: center; gap: 12px; }
     
-    /* Logo 樣式：支援圖片與圖示切換 */
     .logo-container {
       width: 38px; height: 38px; background: #0284c7; border-radius: 6px;
       display: flex; align-items: center; justify-content: center; color: #fff;
@@ -62,6 +61,8 @@
     .btn-light:hover { background-color: #f8fafc; color: #0f172a; }
     .btn-danger { background-color: #ef4444; color: #fff; }
     .btn-danger:hover { background-color: #dc2626; }
+    .btn-success { background-color: #10b981; color: #fff; }
+    .btn-success:hover { background-color: #059669; }
     .btn:disabled, .btn-light.disabled { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; }
 
     /* 工作表垂直堆疊選單 */
@@ -98,13 +99,72 @@
 
     .content-container { flex: 1; overflow-y: auto; padding: 20px 24px; background-color: #f8fafc; }
 
-    table.custom-table { width: 100%; border-collapse: collapse; font-size: 12px; color: #334155; text-align: left; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 24px; }
-    table.custom-table th {
-      background-color: #f1f5f9; color: #0f172a; padding: 12px 10px; border-bottom: 2px solid #cbd5e1;
-      white-space: nowrap; font-weight: 700; position: sticky; top: 0; z-index: 10;
+    /* 表格凍結窗格核心樣式 */
+    .table-responsive-wrapper {
+      max-height: 480px;
+      overflow: auto;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #cbd5e1;
+      margin-bottom: 20px;
     }
-    table.custom-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
-    table.custom-table tr:hover { background-color: #f8fafc; }
+
+    table.custom-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12px;
+      color: #334155;
+      text-align: left;
+    }
+
+    /* 頂部標頭凍結 */
+    table.custom-table th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      padding: 12px 10px;
+      border-bottom: 2px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
+      white-space: nowrap;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    /* 第一欄（首欄）凍結 */
+    table.custom-table td:first-child, table.custom-table th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 21;
+      background-color: #f8fafc;
+      font-weight: bold;
+      border-right: 2px solid #cbd5e1;
+    }
+
+    table.custom-table th:first-child {
+      z-index: 30; /* 交叉點置頂 */
+      background-color: #e2e8f0;
+    }
+
+    table.custom-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #f1f5f9;
+      white-space: nowrap;
+    }
+
+    table.custom-table tr:hover td { background-color: #f1f5f9; }
+
+    /* 新增欄位與列位操作選單 */
+    .table-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
 
     /* 分析圖表區塊樣式 */
     .charts-section-title {
@@ -151,7 +211,6 @@
 
   <header>
     <div class="header-title-group">
-      <!-- 點擊圖片/圖示可輸入網址變更 Logo -->
       <div class="logo-container" id="logo-box" onclick="changeLogoUrl()" title="點擊輸入圖片網址">
         <i class="fa-solid fa-chart-line" id="logo-icon"></i>
       </div>
@@ -164,7 +223,6 @@
       </div>
     </div>
 
-    <!-- 登入控制區塊 -->
     <div class="user-profile-bar">
       <span id="user-name" class="user-name"><i class="fa-solid fa-user-check"></i> <span id="user-email-text"></span></span>
       <button id="auth-btn" class="btn btn-light">
@@ -182,7 +240,6 @@
       </label>
     </div>
     
-    <!-- 工作表垂直向下排列區塊 -->
     <div class="sheet-tabs" id="sheet-tabs-list"></div>
     
     <button id="btn-add-tab" class="btn-add-tab" onclick="addNewSheet()"><i class="fa-solid fa-plus"></i> 新增工作表</button>
@@ -209,7 +266,6 @@
     </div>
   </div>
 
-  <!-- 引入 Firebase SDK (v10) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
@@ -433,7 +489,6 @@
   </script>
 
   <script>
-    // Logo 渲染與圖片網址變更
     function renderLogo() {
       const logoBox = document.getElementById('logo-box');
       if (!logoBox) return;
@@ -524,7 +579,60 @@
       }
     }
 
-    // 主畫面渲染 (上為表格、下為分析圖表)
+    // === 新增/刪除 欄位與列位功能 ===
+    function addRow() {
+      if (!window.currentUser) return alert('請先登入管理員帳號！');
+      const curSheet = sheets.find(s => s.id === activeSheetId);
+      if (!curSheet) return;
+
+      const newRow = {};
+      columns.forEach(col => newRow[col.key] = "-");
+      curSheet.data.push(newRow);
+
+      if (window.saveToFirebase) window.saveToFirebase();
+      renderMainContent();
+    }
+
+    function deleteRow() {
+      if (!window.currentUser) return alert('請先登入管理員帳號！');
+      const curSheet = sheets.find(s => s.id === activeSheetId);
+      if (!curSheet || curSheet.data.length === 0) return;
+
+      curSheet.data.pop();
+      if (window.saveToFirebase) window.saveToFirebase();
+      renderMainContent();
+    }
+
+    function addColumn() {
+      if (!window.currentUser) return alert('請先登入管理員帳號！');
+      const colName = prompt("請輸入新增欄位名稱：", "新欄位");
+      if (!colName || colName.trim() === "") return;
+
+      const newKey = `custom_col_${Date.now()}`;
+      columns.push({ key: newKey, title: colName.trim() });
+
+      sheets.forEach(sheet => {
+        sheet.data.forEach(row => { row[newKey] = "-"; });
+      });
+
+      if (window.saveToFirebase) window.saveToFirebase();
+      renderMainContent();
+    }
+
+    function deleteColumn() {
+      if (!window.currentUser) return alert('請先登入管理員帳號！');
+      if (columns.length <= 1) return alert('至少需要保留一個欄位！');
+
+      const deletedCol = columns.pop();
+      sheets.forEach(sheet => {
+        sheet.data.forEach(row => { delete row[deletedCol.key]; });
+      });
+
+      if (window.saveToFirebase) window.saveToFirebase();
+      renderMainContent();
+    }
+
+    // 主畫面渲染
     function renderMainContent() {
       const container = document.getElementById('main-content');
       const currentSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
@@ -532,11 +640,23 @@
 
       let html = '';
 
-      // 1. 數據表格
+      // 操作工具列（新增/刪除列、欄）
+      if (isLogined) {
+        html += `
+          <div class="table-toolbar">
+            <button class="btn btn-light" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列 (Row)</button>
+            <button class="btn btn-light" onclick="deleteRow()"><i class="fa-solid fa-minus"></i> 刪除最後一列</button>
+            <button class="btn btn-light" onclick="addColumn()"><i class="fa-solid fa-columns"></i> 新增欄位 (Column)</button>
+            <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
+          </div>
+        `;
+      }
+
+      // 數據表格（含凍結窗格包覆容器）
       if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
-        html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。${isLogined ? '請點擊上方「匯入 Excel 覆蓋」' : '（請登入管理員帳號以匯入或修改資料）'}</div>`;
+        html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。${isLogined ? '可點擊上方按鈕新增列/欄或匯入 Excel' : '（請登入管理員帳號以進行編輯）'}</div>`;
       } else {
-        html += `<table class="custom-table"><thead><tr>`;
+        html += `<div class="table-responsive-wrapper"><table class="custom-table"><thead><tr>`;
         columns.forEach(col => { html += `<th>${col.title}</th>`; });
         html += `</tr></thead><tbody>`;
 
@@ -545,40 +665,47 @@
           columns.forEach(col => { html += `<td ${isLogined ? 'contenteditable="true"' : ''}>${row[col.key] || '-'}</td>`; });
           html += `</tr>`;
         });
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
       }
 
-      // 2. 下方圖表區塊
-      html += `
-        <div class="charts-section-title">
-          <i class="fa-solid fa-chart-line"></i> 分析圖表 (資料來源：${currentSheet.name})
-        </div>
-        <div class="charts-grid">
-      `;
+      // 判斷是否為預設首頁工作表 (僅首頁預設數據資料表顯示分析圖表)
+      const isFirstDefaultSheet = (currentSheet.id === "s1" || currentSheet.name === "數據資料表");
 
-      chartConfigs.forEach(cp => {
+      if (isFirstDefaultSheet) {
         html += `
-          <div class="chart-page" id="export-area-${cp.id}">
-            <div class="chart-header">
-              <div class="chart-title"><i class="fa-solid fa-chart-area" style="color:#7e22ce;"></i> ${cp.title}</div>
-              <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')">
-                <i class="fa-solid fa-download"></i> 匯出 PNG 圖片
-              </button>
-            </div>
-            <div class="chart-wrapper">
-              <canvas id="canvas-${cp.id}"></canvas>
-            </div>
+          <div class="charts-section-title">
+            <i class="fa-solid fa-chart-line"></i> 分析圖表 (資料來源：${currentSheet.name})
           </div>
+          <div class="charts-grid">
         `;
-      });
 
-      html += `</div>`;
+        chartConfigs.forEach(cp => {
+          html += `
+            <div class="chart-page" id="export-area-${cp.id}">
+              <div class="chart-header">
+                <div class="chart-title"><i class="fa-solid fa-chart-area" style="color:#7e22ce;"></i> ${cp.title}</div>
+                <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')">
+                  <i class="fa-solid fa-download"></i> 匯出 PNG 圖片
+                </button>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="canvas-${cp.id}"></canvas>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      }
+
       container.innerHTML = html;
 
-      // 渲染所有 Chart 圖表
-      setTimeout(() => {
-        chartConfigs.forEach(cp => buildChart(cp, currentSheet));
-      }, 100);
+      // 若有分析圖表則進行繪製
+      if (isFirstDefaultSheet) {
+        setTimeout(() => {
+          chartConfigs.forEach(cp => buildChart(cp, currentSheet));
+        }, 100);
+      }
     }
 
     function buildChart(chartConfig, currentSheet) {
