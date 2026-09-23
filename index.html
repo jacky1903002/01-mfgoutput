@@ -3,139 +3,644 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>MFG Output Analysis</title>
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- SheetJS (XLSX) -->
+
+  <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- html2canvas for Exporting PNG -->
+
+  <!-- html2canvas -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
   <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  >
+
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #f8fafc; color: #334155; display: flex; flex-direction: column; min-height: 100vh; }
-    
-    header { background-color: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-    .header-left { display: flex; align-items: center; gap: 16px; }
-    .logo-box { width: 40px; height: 40px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #2563eb; font-size: 20px; cursor: pointer; overflow: hidden; border: 1px dashed #bfdbfe; }
-    .logo-box img { width: 100%; height: 100%; object-fit: cover; }
-    h1 { font-size: 20px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; }
-    
-    .header-right { display: flex; align-items: center; gap: 12px; }
-    .user-info { font-size: 14px; color: #64748b; display: none; }
-    .btn { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s; text-decoration: none; }
-    .btn-light { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .btn-light:hover { background: #e2e8f0; }
-    .btn-success { background: #10b981; color: white; }
-    .btn-success:hover { background: #059669; }
-    .btn-danger { background: #ef4444; color: white; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn.disabled { opacity: 0.5; pointer-events: none; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, sans-serif;
+    }
 
-    .status-bar { background: #f8fafc; padding: 8px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #64748b; }
-    .status-badge { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
-    .status-badge.success { color: #059669; }
-    .status-badge.loading { color: #d97706; }
-    .status-badge.read-only { color: #dc2626; }
+    body {
+      background-color: #f8fafc;
+      color: #334155;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
 
-    .nav-container { background: #ffffff; padding: 12px 24px 0 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px; overflow-x: auto; }
-    .tab-item { padding: 10px 18px; font-size: 14px; font-weight: 500; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-bottom: none; border-top-left-radius: 8px; border-top-right-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: all 0.2s; }
-    .tab-item:hover { color: #1e293b; background: #f1f5f9; }
-    .tab-item.active { background: #ffffff; color: #2563eb; border-color: #cbd5e1; border-bottom: 2px solid #ffffff; margin-bottom: -1px; font-weight: 600; }
-    .tab-delete-btn, .tab-edit-icon { font-size: 12px; color: #94a3b8; padding: 2px; border-radius: 4px; }
-    .tab-delete-btn:hover { color: #ef4444; background: #fee2e2; }
-    .tab-edit-icon:hover { color: #2563eb; background: #e0f2fe; }
-    .btn-add-tab { background: none; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 6px 12px; color: #64748b; cursor: pointer; font-size: 13px; margin-bottom: 10px; }
-    .btn-add-tab:hover { border-color: #2563eb; color: #2563eb; }
+    header {
+      background-color: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
-    main { padding: 24px; flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; }
-    .table-toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .table-responsive-wrapper { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; margin-bottom: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .custom-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; white-space: nowrap; }
-    .custom-table th { background: #f1f5f9; color: #334155; font-weight: 600; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; }
-    .custom-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #475569; outline: none; }
-    .custom-table tr:hover td { background: #f8fafc; }
-    .custom-table td[contenteditable="true"]:focus { background: #eff6ff; box-shadow: inset 0 0 0 2px #3b82f6; }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
 
-    .charts-section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .charts-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 40px; }
-    .charts-grid-2col { display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 24px; margin-bottom: 40px; }
-    .chart-page { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .chart-title { font-size: 15px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; }
-    .chart-wrapper { position: relative; height: 360px; width: 100%; }
+    .logo-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: #eff6ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #2563eb;
+      font-size: 20px;
+      cursor: pointer;
+      overflow: hidden;
+      border: 1px dashed #bfdbfe;
+    }
 
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-card { background: #ffffff; padding: 24px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #0f172a; }
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
-    .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .logo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-info {
+      font-size: 14px;
+      color: #64748b;
+      display: none;
+    }
+
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-light {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-light:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .status-bar {
+      background: #f8fafc;
+      padding: 8px 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+    }
+
+    .status-badge.success {
+      color: #059669;
+    }
+
+    .status-badge.loading {
+      color: #d97706;
+    }
+
+    .status-badge.read-only {
+      color: #dc2626;
+    }
+
+    .nav-container {
+      background: #ffffff;
+      padding: 12px 24px 0 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+    }
+
+    .tab-item {
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-bottom: none;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab-item:hover {
+      color: #1e293b;
+      background: #f1f5f9;
+    }
+
+    .tab-item.active {
+      background: #ffffff;
+      color: #2563eb;
+      border-color: #cbd5e1;
+      border-bottom: 2px solid #ffffff;
+      margin-bottom: -1px;
+      font-weight: 600;
+    }
+
+    .tab-delete-btn,
+    .tab-edit-icon {
+      font-size: 12px;
+      color: #94a3b8;
+      padding: 2px;
+      border-radius: 4px;
+    }
+
+    .tab-delete-btn:hover {
+      color: #ef4444;
+      background: #fee2e2;
+    }
+
+    .tab-edit-icon:hover {
+      color: #2563eb;
+      background: #e0f2fe;
+    }
+
+    .btn-add-tab {
+      background: none;
+      border: 1px dashed #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 12px;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .btn-add-tab:hover {
+      border-color: #2563eb;
+      color: #2563eb;
+    }
+
+    main {
+      padding: 24px;
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .table-toolbar {
+      margin-bottom: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .table-responsive-wrapper {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 30px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .custom-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .custom-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #475569;
+      outline: none;
+    }
+
+    .custom-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    .custom-table td[contenteditable="true"]:focus {
+      background: #eff6ff;
+      box-shadow: inset 0 0 0 2px #3b82f6;
+    }
+
+    .charts-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .charts-grid-2col {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(500px, 1fr)
+      );
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .chart-page {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 360px;
+      width: 100%;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #0f172a;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 10px 14px;
+      }
+
+      .header-right {
+        gap: 6px;
+      }
+
+      .header-right .btn {
+        padding: 6px 9px;
+      }
+
+      .user-info {
+        display: none !important;
+      }
+
+      main {
+        padding: 14px;
+      }
+
+      .charts-grid-2col {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
+
 <body>
 
   <header>
     <div class="header-left">
-      <div class="logo-box" id="logo-box" title="點擊更換 Logo 圖片" onclick="changeLogoUrl()">
+      <div
+        class="logo-box"
+        id="logo-box"
+        title="點擊更換 Logo 圖片"
+        onclick="changeLogoUrl()"
+      >
         <i class="fa-solid fa-chart-line" id="logo-icon"></i>
       </div>
+
       <h1>MFG Output Analysis</h1>
     </div>
+
     <div class="header-right">
-      <span class="user-info" id="user-name">管理者: <strong id="user-email-text"></strong></span>
-      <button class="btn btn-light" onclick="exportCurrentSheetExcel()">
-        <i class="fa-solid fa-file-excel" style="color: #059669;"></i> 匯出 Excel
+
+      <span class="user-info" id="user-name">
+        管理者：
+        <strong id="user-email-text"></strong>
+      </span>
+
+      <button
+        class="btn btn-light"
+        onclick="exportCurrentSheetExcel()"
+      >
+        <i
+          class="fa-solid fa-file-excel"
+          style="color:#059669;"
+        ></i>
+        匯出 Excel
       </button>
-      <label class="btn btn-light disabled" id="btn-import-excel" style="cursor: pointer;">
-        <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> 匯入 Excel 至當前工作表
-        <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
+
+      <label
+        class="btn btn-light disabled"
+        id="btn-import-excel"
+        style="cursor:pointer;"
+      >
+        <i
+          class="fa-solid fa-file-excel"
+          style="color:#10b981;"
+        ></i>
+        匯入 Excel 至當前工作表
+
+        <input
+          type="file"
+          id="upload-excel"
+          accept=".xlsx,.xls"
+          style="display:none;"
+        >
       </label>
+
       <button class="btn btn-light" id="auth-btn">
-        <i class="fa-solid fa-lock"></i> <span id="auth-btn-text">管理員登入</span>
+        <i class="fa-solid fa-lock"></i>
+        <span id="auth-btn-text">管理員登入</span>
       </button>
+
     </div>
   </header>
 
   <div class="status-bar">
     <div>工作表導覽列：</div>
-    <div class="status-badge loading" id="firebase-status">● 連線初始化中...</div>
+
+    <div
+      class="status-badge loading"
+      id="firebase-status"
+    >
+      ● 連線初始化中...
+    </div>
   </div>
 
   <div class="nav-container">
-    <div id="sheet-tabs-list" style="display: flex; gap: 8px; align-items: flex-end;"></div>
-    <button class="btn-add-tab" id="btn-add-tab" onclick="addNewSheet()" disabled title="請先登入管理員帳號"><i class="fa-solid fa-plus"></i> 新增工作表</button>
+
+    <div
+      id="sheet-tabs-list"
+      style="display:flex;gap:8px;align-items:flex-end;"
+    ></div>
+
+    <button
+      class="btn-add-tab"
+      id="btn-add-tab"
+      onclick="addNewSheet()"
+      disabled
+      title="請先登入管理員帳號"
+    >
+      <i class="fa-solid fa-plus"></i>
+      新增工作表
+    </button>
+
   </div>
 
   <main id="main-content"></main>
 
+  <!-- Login Modal -->
   <div class="modal-overlay" id="login-modal">
+
     <div class="modal-card">
-      <div class="modal-title"><i class="fa-solid fa-lock" style="color:#2563eb;"></i> 管理員登入</div>
+
+      <div class="modal-title">
+        <i
+          class="fa-solid fa-lock"
+          style="color:#2563eb;"
+        ></i>
+        管理員登入
+      </div>
+
       <div class="form-group">
         <label>電子郵件 (Email)</label>
-        <input type="email" id="login-email" class="form-control" placeholder="admin@example.com">
+
+        <input
+          type="email"
+          id="login-email"
+          class="form-control"
+          placeholder="admin@example.com"
+        >
       </div>
+
       <div class="form-group">
         <label>密碼 (Password)</label>
-        <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+
+        <input
+          type="password"
+          id="login-password"
+          class="form-control"
+          placeholder="••••••••"
+        >
       </div>
+
       <div class="modal-actions">
-        <button class="btn btn-light" onclick="closeLoginModal()">取消</button>
-        <button class="btn btn-success" id="do-login-btn">確認登入</button>
+
+        <button
+          class="btn btn-light"
+          onclick="closeLoginModal()"
+        >
+          取消
+        </button>
+
+        <button
+          class="btn btn-success"
+          id="do-login-btn"
+        >
+          確認登入
+        </button>
+
       </div>
+
     </div>
+
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    /* =========================================================
+       Firebase Imports
+    ========================================================= */
+
+    import {
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+    import {
+      getAnalytics
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+
+    /* =========================================================
+       Firebase Configuration
+    ========================================================= */
 
     const firebaseConfig = {
       apiKey: "AIzaSyARVVuOfxBRx5BfQ0oEY7bfjuA_DmQQBV0",
@@ -148,582 +653,3792 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
+
+    let analytics = null;
+
+    try {
+      analytics = getAnalytics(app);
+    } catch (error) {
+      console.warn("Firebase Analytics 初始化略過:", error);
+    }
+
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const docRef = doc(db, "mfg_data", "main_config");
+
+    const docRef = doc(
+      db,
+      "mfg_data",
+      "main_config"
+    );
+
+
+    /* =========================================================
+       Global Variables
+    ========================================================= */
 
     window.currentUser = null;
     window.logoUrl = "";
     window.chartInstances = {};
 
-    // 數值清洗工具：安全將含有千分位逗號的字串轉成數字
+
+    /* =========================================================
+       Utility Functions
+    ========================================================= */
+
     function parseVal(val) {
-      if (val === undefined || val === null) return 0;
-      if (typeof val === 'number') return val;
-      const cleaned = String(val).replace(/,/g, '').trim();
+
+      if (
+        val === undefined ||
+        val === null ||
+        val === ""
+      ) {
+        return 0;
+      }
+
+      if (typeof val === "number") {
+        return Number.isFinite(val) ? val : 0;
+      }
+
+      const cleaned = String(val)
+        .replace(/,/g, "")
+        .replace(/%/g, "")
+        .trim();
+
       const num = parseFloat(cleaned);
-      return isNaN(num) ? 0 : num;
+
+      return Number.isFinite(num) ? num : 0;
     }
+
     window.parseVal = parseVal;
 
+
+    function escapeHtml(value) {
+
+      if (
+        value === undefined ||
+        value === null
+      ) {
+        return "";
+      }
+
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    window.escapeHtml = escapeHtml;
+
+
+    function safeSheetName(name) {
+
+      return String(name || "工作表")
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .substring(0, 31);
+    }
+
+
+    function generateId(prefix = "id") {
+
+      return `${prefix}_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(2, 8)}`;
+    }
+
+
+    /* =========================================================
+       Default Columns
+    ========================================================= */
+
     const defaultColumns1 = [
-      { key: "month", title: "月份/時間" },
-      { key: "item_0", title: "石墨產出市值(NT$)" },
-      { key: "item_1", title: "石墨產出數量(PCS)" },
-      { key: "item_6", title: "合計產出市值(NT$)" },
-      { key: "item_7", title: "合計產出數量(PCS)" },
-      { key: "item_12", title: "刀具費/產值" },
-      { key: "item_14", title: "報廢/產值" },
-      { key: "item_10", title: "加班費/產值" }
+      {
+        key: "month",
+        title: "月份/時間"
+      },
+      {
+        key: "item_0",
+        title: "石墨產出市值(NT$)"
+      },
+      {
+        key: "item_1",
+        title: "石墨產出數量(PCS)"
+      },
+      {
+        key: "item_6",
+        title: "合計產出市值(NT$)"
+      },
+      {
+        key: "item_7",
+        title: "合計產出數量(PCS)"
+      },
+      {
+        key: "item_12",
+        title: "刀具費/產值"
+      },
+      {
+        key: "item_14",
+        title: "報廢/產值"
+      },
+      {
+        key: "item_10",
+        title: "加班費/產值"
+      }
     ];
+
 
     const defaultColumns2 = [
-      { key: "month", title: "月份/時間" },
-      { key: "c1", title: "鎢鉬鉭刀具費" },
-      { key: "c2", title: "鎢鉬鉭刀具費/成本" },
-      { key: "c3", title: "鎢鉬鉭產品成本" },
-      { key: "c4", title: "石墨刀具費" },
-      { key: "c5", title: "石墨刀具費/成本" },
-      { key: "c6", title: "石墨產品成本" },
-      { key: "c7", title: "其他刀具費" },
-      { key: "c8", title: "其他刀具費/成本" },
-      { key: "c9", title: "其他產品成本" }
+      {
+        key: "month",
+        title: "月份/時間"
+      },
+      {
+        key: "c1",
+        title: "鎢鉬鉭刀具費"
+      },
+      {
+        key: "c2",
+        title: "鎢鉬鉭刀具費/成本"
+      },
+      {
+        key: "c3",
+        title: "鎢鉬鉭產品成本"
+      },
+      {
+        key: "c4",
+        title: "石墨刀具費"
+      },
+      {
+        key: "c5",
+        title: "石墨刀具費/成本"
+      },
+      {
+        key: "c6",
+        title: "石墨產品成本"
+      },
+      {
+        key: "c7",
+        title: "其他刀具費"
+      },
+      {
+        key: "c8",
+        title: "其他刀具費/成本"
+      },
+      {
+        key: "c9",
+        title: "其他產品成本"
+      }
     ];
+
 
     const defaultColumns3 = [
-      { key: "month", title: "月份/時間" },
-      { key: "val_1", title: "項目一" },
-      { key: "val_2", title: "項目二" },
-      { key: "val_3", title: "項目三" }
+      {
+        key: "month",
+        title: "月份/時間"
+      },
+      {
+        key: "val_1",
+        title: "項目一"
+      },
+      {
+        key: "val_2",
+        title: "項目二"
+      },
+      {
+        key: "val_3",
+        title: "項目三"
+      }
     ];
+
 
     const defaultData3 = [
-      { month: "2026-01", val_1: "15.5", val_2: "22.1", val_3: "10.3" },
-      { month: "2026-02", val_1: "18.2", val_2: "20.4", val_3: "12.1" },
-      { month: "2026-03", val_1: "16.8", val_2: "25.0", val_3: "11.5" },
-      { month: "2026-04", val_1: "19.1", val_2: "23.2", val_3: "14.2" },
-      { month: "2026-05", val_1: "21.0", val_2: "26.5", val_3: "13.8" }
+      {
+        month: "2026-01",
+        val_1: "15.5",
+        val_2: "22.1",
+        val_3: "10.3"
+      },
+      {
+        month: "2026-02",
+        val_1: "18.2",
+        val_2: "20.4",
+        val_3: "12.1"
+      },
+      {
+        month: "2026-03",
+        val_1: "16.8",
+        val_2: "25.0",
+        val_3: "11.5"
+      },
+      {
+        month: "2026-04",
+        val_1: "19.1",
+        val_2: "23.2",
+        val_3: "14.2"
+      },
+      {
+        month: "2026-05",
+        val_1: "21.0",
+        val_2: "26.5",
+        val_3: "13.8"
+      }
     ];
+
 
     const defaultColumns4 = [
-      { key: "m_202601", title: "202601" },
-      { key: "m_202602", title: "202602" },
-      { key: "m_202603", title: "202603" },
-      { key: "m_202604", title: "202604" },
-      { key: "m_202605", title: "202605" },
-      { key: "m_202606", title: "202606" },
-      { key: "m_202607", title: "202607" },
-      { key: "m_202608", title: "202608" },
-      { key: "customer", title: "客戶" },
-      { key: "total", title: "總計" }
+      {
+        key: "m_202601",
+        title: "202601"
+      },
+      {
+        key: "m_202602",
+        title: "202602"
+      },
+      {
+        key: "m_202603",
+        title: "202603"
+      },
+      {
+        key: "m_202604",
+        title: "202604"
+      },
+      {
+        key: "m_202605",
+        title: "202605"
+      },
+      {
+        key: "m_202606",
+        title: "202606"
+      },
+      {
+        key: "m_202607",
+        title: "202607"
+      },
+      {
+        key: "m_202608",
+        title: "202608"
+      },
+      {
+        key: "customer",
+        title: "客戶"
+      },
+      {
+        key: "total",
+        title: "總計"
+      }
     ];
+
 
     const defaultData4 = [
-      { m_202601: "59,998,845", m_202602: "40,586,297", m_202603: "56,745,387", m_202604: "40,272,111", m_202605: "51,960,755", m_202606: "53,333,500", m_202607: "70,194,738", m_202608: "60,404,056", customer: "市場件", total: "433,495,689" },
-      { m_202601: "47,521,142", m_202602: "43,528,129", m_202603: "61,439,850", m_202604: "52,870,713", m_202605: "53,907,642", m_202606: "46,702,936", m_202607: "71,721,752", m_202608: "54,713,401", customer: "Varian", total: "432,405,565" },
-      { m_202601: "27,314,812", m_202602: "14,748,942", m_202603: "27,444,215", m_202604: "22,028,483", m_202605: "22,237,457", m_202606: "21,506,243", m_202607: "32,319,562", m_202608: "30,945,240", customer: "Applied", total: "198,544,954" },
-      { m_202601: "5,848,179", m_202602: "9,134,495", m_202603: "7,880,801", m_202604: "979,049", m_202605: "11,466,204", m_202606: "6,065,663", m_202607: "11,391,269", m_202608: "9,345,916", customer: "CS", total: "64,923,020" },
-      { m_202601: "4,282,265", m_202602: "2,521,749", m_202603: "6,905,717", m_202604: "3,936,601", m_202605: "6,883,600", m_202606: "4,838,257", m_202607: "13,492,273", m_202608: "6,583,415", customer: "SEN", total: "49,443,967" },
-      { m_202601: "4,278,106", m_202602: "3,283,019", m_202603: "3,286,536", m_202604: "6,482,403", m_202605: "3,160,527", m_202606: "5,548,258", m_202607: "7,797,439", m_202608: "8,649,582", customer: "HMI", total: "42,494,870" },
-      { m_202601: "3,319,327", m_202602: "4,622,993", m_202603: "3,532,799", m_202604: "3,910,604", m_202605: "5,085,243", m_202606: "3,965,133", m_202607: "6,796,389", m_202608: "5,560,295", customer: "AIBT", total: "36,801,783" },
-      { m_202601: "3,770,924", m_202602: "2,723,001", m_202603: "2,982,465", m_202604: "3,824,346", m_202605: "3,440,279", m_202606: "5,256,001", m_202607: "6,760,825", m_202608: "6,602,972", customer: "ASML", total: "35,361,413" },
-      { m_202601: "4,118,884", m_202602: "2,267,000", m_202603: "1,572,719", m_202604: "4,568,639", m_202605: "2,648,280", m_202606: "2,875,481", m_202607: "4,312,100", m_202608: "4,078,371", customer: "BHT", total: "26,441,474" }
+      {
+        m_202601: "59,998,845",
+        m_202602: "40,586,297",
+        m_202603: "56,745,387",
+        m_202604: "40,272,111",
+        m_202605: "51,960,755",
+        m_202606: "53,333,500",
+        m_202607: "70,194,738",
+        m_202608: "60,404,056",
+        customer: "市場件",
+        total: "433,495,689"
+      },
+      {
+        m_202601: "47,521,142",
+        m_202602: "43,528,129",
+        m_202603: "61,439,850",
+        m_202604: "52,870,713",
+        m_202605: "53,907,642",
+        m_202606: "46,702,936",
+        m_202607: "71,721,752",
+        m_202608: "54,713,401",
+        customer: "Varian",
+        total: "432,405,565"
+      },
+      {
+        m_202601: "27,314,812",
+        m_202602: "14,748,942",
+        m_202603: "27,444,215",
+        m_202604: "22,028,483",
+        m_202605: "22,237,457",
+        m_202606: "21,506,243",
+        m_202607: "32,319,562",
+        m_202608: "30,945,240",
+        customer: "Applied",
+        total: "198,544,954"
+      },
+      {
+        m_202601: "5,848,179",
+        m_202602: "9,134,495",
+        m_202603: "7,880,801",
+        m_202604: "979,049",
+        m_202605: "11,466,204",
+        m_202606: "6,065,663",
+        m_202607: "11,391,269",
+        m_202608: "9,345,916",
+        customer: "CS",
+        total: "64,923,020"
+      },
+      {
+        m_202601: "4,282,265",
+        m_202602: "2,521,749",
+        m_202603: "6,905,717",
+        m_202604: "3,936,601",
+        m_202605: "6,883,600",
+        m_202606: "4,838,257",
+        m_202607: "13,492,273",
+        m_202608: "6,583,415",
+        customer: "SEN",
+        total: "49,443,967"
+      },
+      {
+        m_202601: "4,278,106",
+        m_202602: "3,283,019",
+        m_202603: "3,286,536",
+        m_202604: "6,482,403",
+        m_202605: "3,160,527",
+        m_202606: "5,548,258",
+        m_202607: "7,797,439",
+        m_202608: "8,649,582",
+        customer: "HMI",
+        total: "42,494,870"
+      },
+      {
+        m_202601: "3,319,327",
+        m_202602: "4,622,993",
+        m_202603: "3,532,799",
+        m_202604: "3,910,604",
+        m_202605: "5,085,243",
+        m_202606: "3,965,133",
+        m_202607: "6,796,389",
+        m_202608: "5,560,295",
+        customer: "AIBT",
+        total: "36,801,783"
+      },
+      {
+        m_202601: "3,770,924",
+        m_202602: "2,723,001",
+        m_202603: "2,982,465",
+        m_202604: "3,824,346",
+        m_202605: "3,440,279",
+        m_202606: "5,256,001",
+        m_202607: "6,760,825",
+        m_202608: "6,602,972",
+        customer: "ASML",
+        total: "35,361,413"
+      },
+      {
+        m_202601: "4,118,884",
+        m_202602: "2,267,000",
+        m_202603: "1,572,719",
+        m_202604: "4,568,639",
+        m_202605: "2,648,280",
+        m_202606: "2,875,481",
+        m_202607: "4,312,100",
+        m_202608: "4,078,371",
+        customer: "BHT",
+        total: "26,441,474"
+      }
     ];
+
+
+    /* =========================================================
+       Sheets
+    ========================================================= */
 
     window.sheets = [
-      { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] },
-      { id: "s2", name: "刀具費佔成本", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: [] },
-      { id: "s3", name: "複材占比", columns: JSON.parse(JSON.stringify(defaultColumns3)), data: JSON.parse(JSON.stringify(defaultData3)) },
-      { id: "s4", name: "各客戶累積產值", columns: JSON.parse(JSON.stringify(defaultColumns4)), data: JSON.parse(JSON.stringify(defaultData4)) }
+
+      {
+        id: "s1",
+        name: "產能量能分析",
+        columns: JSON.parse(
+          JSON.stringify(defaultColumns1)
+        ),
+        data: []
+      },
+
+      {
+        id: "s2",
+        name: "刀具費佔成本",
+        columns: JSON.parse(
+          JSON.stringify(defaultColumns2)
+        ),
+        data: []
+      },
+
+      {
+        id: "s3",
+        name: "複材占比",
+        columns: JSON.parse(
+          JSON.stringify(defaultColumns3)
+        ),
+        data: JSON.parse(
+          JSON.stringify(defaultData3)
+        )
+      },
+
+      {
+        id: "s4",
+        name: "各客戶累積產值",
+        columns: JSON.parse(
+          JSON.stringify(defaultColumns4)
+        ),
+        data: JSON.parse(
+          JSON.stringify(defaultData4)
+        )
+      }
+
     ];
+
     window.activeSheetId = "s4";
 
+
+    /* =========================================================
+       Chart Configurations
+    ========================================================= */
+
     window.sheet1ChartConfigs = [
-      { id: "s1_chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
-      { id: "s1_chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
-      { id: "s1_chart_3", title: "📊 刀具費/產值 分析圖", type: "line", dataKey: "刀具費/產值" },
-      { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
+
+      {
+        id: "s1_chart_1",
+        title: "合計產出市值 / 產出數量 趨勢圖",
+        type: "combo"
+      },
+
+      {
+        id: "s1_chart_2",
+        title: "報廢/產值 分析圖",
+        type: "line",
+        dataKey: "報廢/產值"
+      },
+
+      {
+        id: "s1_chart_3",
+        title: "刀具費/產值 分析圖",
+        type: "line",
+        dataKey: "刀具費/產值"
+      },
+
+      {
+        id: "s1_chart_4",
+        title: "加班費/產值 分析圖",
+        type: "line",
+        dataKey: "加班費/產值"
+      }
+
     ];
+
 
     window.sheet2ChartConfigs = [
-      { id: "s2_chart_1", title: "鎢鉬鉭刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "鎢鉬鉭刀具費", lineKey: "鎢鉬鉭刀具費/成本" },
-      { id: "s2_chart_2", title: "鎢鉬鉭刀具費與成本趨勢圖", type: "double_line", line1Key: "鎢鉬鉭刀具費", line2Key: "鎢鉬鉭產品成本" },
-      { id: "s2_chart_3", title: "石墨刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "石墨刀具費", lineKey: "石墨刀具費/成本" },
-      { id: "s2_chart_4", title: "石墨刀具費與成本趨勢圖", type: "double_line", line1Key: "石墨刀具費", line2Key: "石墨產品成本" },
-      { id: "s2_chart_5", title: "其他刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "其他刀具費", lineKey: "其他刀具費/成本" },
-      { id: "s2_chart_6", title: "其他刀具費與成本趨勢圖", type: "double_line", line1Key: "其他刀具費", line2Key: "其他產品成本" }
+
+      {
+        id: "s2_chart_1",
+        title: "鎢鉬鉭刀具費金額與佔比趨勢圖",
+        type: "combo_bar_line",
+        barKey: "鎢鉬鉭刀具費",
+        lineKey: "鎢鉬鉭刀具費/成本"
+      },
+
+      {
+        id: "s2_chart_2",
+        title: "鎢鉬鉭刀具費與成本趨勢圖",
+        type: "double_line",
+        line1Key: "鎢鉬鉭刀具費",
+        line2Key: "鎢鉬鉭產品成本"
+      },
+
+      {
+        id: "s2_chart_3",
+        title: "石墨刀具費金額與佔比趨勢圖",
+        type: "combo_bar_line",
+        barKey: "石墨刀具費",
+        lineKey: "石墨刀具費/成本"
+      },
+
+      {
+        id: "s2_chart_4",
+        title: "石墨刀具費與成本趨勢圖",
+        type: "double_line",
+        line1Key: "石墨刀具費",
+        line2Key: "石墨產品成本"
+      },
+
+      {
+        id: "s2_chart_5",
+        title: "其他刀具費金額與佔比趨勢圖",
+        type: "combo_bar_line",
+        barKey: "其他刀具費",
+        lineKey: "其他刀具費/成本"
+      },
+
+      {
+        id: "s2_chart_6",
+        title: "其他刀具費與成本趨勢圖",
+        type: "double_line",
+        line1Key: "其他刀具費",
+        line2Key: "其他產品成本"
+      }
+
     ];
 
-    onAuthStateChanged(auth, (user) => {
-      window.currentUser = user;
-      const authBtn = document.getElementById('auth-btn');
-      const authBtnText = document.getElementById('auth-btn-text');
-      const name = document.getElementById('user-name');
-      const emailText = document.getElementById('user-email-text');
-      const addBtn = document.getElementById('btn-add-tab');
-      const importBtn = document.getElementById('btn-import-excel');
 
-      if (user) {
-        authBtnText.innerText = "登出";
-        authBtn.className = "btn btn-danger";
-        emailText.innerText = user.email;
-        name.style.display = "inline-block";
-        addBtn.disabled = false;
-        importBtn.classList.remove('disabled');
-      } else {
-        authBtnText.innerText = "管理員登入";
-        authBtn.className = "btn btn-light";
-        name.style.display = "none";
-        addBtn.disabled = true;
-        importBtn.classList.add('disabled');
+    /* =========================================================
+       Find Column
+    ========================================================= */
+
+    function findColumnByTitle(sheet, title) {
+
+      if (!sheet || !Array.isArray(sheet.columns)) {
+        return null;
       }
-      window.renderTabs();
-      window.renderMainContent();
-    });
 
-    document.getElementById('auth-btn').addEventListener('click', () => {
-      if (window.currentUser) {
-        signOut(auth).then(() => alert('已成功登出！'));
-      } else {
-        document.getElementById('login-modal').style.display = 'flex';
-      }
-    });
+      return sheet.columns.find(
+        col => col.title === title
+      ) || null;
+    }
 
-    document.getElementById('do-login-btn').addEventListener('click', () => {
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
-      if (!email || !password) return alert('請輸入 Email 與密碼！');
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          window.closeLoginModal();
-          alert('登入成功！已解除編輯鎖定。');
-        })
-        .catch(error => {
-          alert('登入失敗：' + error.message);
+
+    /* =========================================================
+       Destroy Charts
+    ========================================================= */
+
+    function destroyAllCharts() {
+
+      Object.keys(window.chartInstances)
+        .forEach(key => {
+
+          try {
+
+            if (
+              window.chartInstances[key] &&
+              typeof window.chartInstances[key].destroy === "function"
+            ) {
+              window.chartInstances[key].destroy();
+            }
+
+          } catch (error) {
+
+            console.warn(
+              "Chart destroy 失敗:",
+              key,
+              error
+            );
+
+          }
+
         });
-    });
 
-    window.closeLoginModal = function() {
-      document.getElementById('login-modal').style.display = 'none';
-      document.getElementById('login-password').value = '';
-    };
+      window.chartInstances = {};
+    }
+
+
+    /* =========================================================
+       Create Standard Chart Options
+    ========================================================= */
+
+    function standardChartOptions() {
+
+      return {
+
+        responsive: true,
+
+        maintainAspectRatio: false,
+
+        interaction: {
+          mode: "index",
+          intersect: false
+        },
+
+        plugins: {
+
+          legend: {
+            position: "top"
+          },
+
+          tooltip: {
+            mode: "index",
+            intersect: false
+          }
+
+        },
+
+        scales: {
+
+          x: {
+            grid: {
+              display: false
+            }
+          },
+
+          y: {
+            beginAtZero: true
+          }
+
+        }
+
+      };
+
+    }
+
+
+    /* =========================================================
+       Create S1 Charts
+    ========================================================= */
+
+    function createS1Charts(sheet) {
+
+      const labels = sheet.data.map(
+        row => row.month || "-"
+      );
+
+
+      /* ---------------------------------------------------------
+         Chart 1 - Combo
+      --------------------------------------------------------- */
+
+      const comboCanvas =
+        document.getElementById(
+          "canvas-s1_chart_1"
+        );
+
+      if (comboCanvas) {
+
+        const marketValueCol =
+          findColumnByTitle(
+            sheet,
+            "合計產出市值(NT$)"
+          );
+
+        const quantityCol =
+          findColumnByTitle(
+            sheet,
+            "合計產出數量(PCS)"
+          );
+
+        if (
+          marketValueCol &&
+          quantityCol
+        ) {
+
+          window.chartInstances.s1_chart_1 =
+            new Chart(
+              comboCanvas,
+              {
+                data: {
+
+                  labels,
+
+                  datasets: [
+
+                    {
+                      type: "bar",
+
+                      label: "合計產出市值(NT$)",
+
+                      data: sheet.data.map(
+                        row =>
+                          parseVal(
+                            row[marketValueCol.key]
+                          )
+                      ),
+
+                      yAxisID: "y",
+
+                      backgroundColor:
+                        "rgba(37,99,235,0.55)",
+
+                      borderColor:
+                        "#2563eb",
+
+                      borderWidth: 1
+                    },
+
+                    {
+                      type: "line",
+
+                      label: "合計產出數量(PCS)",
+
+                      data: sheet.data.map(
+                        row =>
+                          parseVal(
+                            row[quantityCol.key]
+                          )
+                      ),
+
+                      yAxisID: "y1",
+
+                      borderColor:
+                        "#ef4444",
+
+                      backgroundColor:
+                        "#ef4444",
+
+                      tension: 0.2,
+
+                      fill: false
+                    }
+
+                  ]
+
+                },
+
+                options: {
+
+                  responsive: true,
+
+                  maintainAspectRatio: false,
+
+                  interaction: {
+                    mode: "index",
+                    intersect: false
+                  },
+
+                  scales: {
+
+                    y: {
+
+                      type: "linear",
+
+                      position: "left",
+
+                      beginAtZero: true,
+
+                      title: {
+                        display: true,
+                        text: "市值"
+                      }
+
+                    },
+
+                    y1: {
+
+                      type: "linear",
+
+                      position: "right",
+
+                      beginAtZero: true,
+
+                      grid: {
+                        drawOnChartArea: false
+                      },
+
+                      title: {
+                        display: true,
+                        text: "數量"
+                      }
+
+                    }
+
+                  }
+
+                }
+
+              }
+            );
+
+        }
+
+      }
+
+
+      /* ---------------------------------------------------------
+         Charts 2-4
+      --------------------------------------------------------- */
+
+      window.sheet1ChartConfigs
+        .filter(
+          config => config.type === "line"
+        )
+        .forEach(config => {
+
+          const canvas =
+            document.getElementById(
+              `canvas-${config.id}`
+            );
+
+          if (!canvas) return;
+
+          const col =
+            findColumnByTitle(
+              sheet,
+              config.dataKey
+            );
+
+          if (!col) return;
+
+          window.chartInstances[config.id] =
+            new Chart(
+              canvas,
+              {
+
+                type: "line",
+
+                data: {
+
+                  labels,
+
+                  datasets: [
+
+                    {
+
+                      label: config.dataKey,
+
+                      data: sheet.data.map(
+                        row =>
+                          parseVal(
+                            row[col.key]
+                          )
+                      ),
+
+                      borderColor: "#2563eb",
+
+                      backgroundColor:
+                        "rgba(37,99,235,0.15)",
+
+                      tension: 0.2,
+
+                      fill: true
+
+                    }
+
+                  ]
+
+                },
+
+                options: standardChartOptions()
+
+              }
+            );
+
+        });
+
+    }
+
+
+    /* =========================================================
+       Create S2 Charts
+    ========================================================= */
+
+    function createS2Charts(sheet) {
+
+      const labels = sheet.data.map(
+        row => row.month || "-"
+      );
+
+
+      window.sheet2ChartConfigs.forEach(
+        config => {
+
+          const canvas =
+            document.getElementById(
+              `canvas-${config.id}`
+            );
+
+          if (!canvas) return;
+
+
+          if (
+            config.type ===
+            "combo_bar_line"
+          ) {
+
+            const barCol =
+              findColumnByTitle(
+                sheet,
+                config.barKey
+              );
+
+            const lineCol =
+              findColumnByTitle(
+                sheet,
+                config.lineKey
+              );
+
+            if (
+              !barCol ||
+              !lineCol
+            ) {
+              return;
+            }
+
+
+            window.chartInstances[config.id] =
+              new Chart(
+                canvas,
+                {
+
+                  data: {
+
+                    labels,
+
+                    datasets: [
+
+                      {
+
+                        type: "bar",
+
+                        label: config.barKey,
+
+                        data: sheet.data.map(
+                          row =>
+                            parseVal(
+                              row[barCol.key]
+                            )
+                        ),
+
+                        backgroundColor:
+                          "rgba(37,99,235,0.55)",
+
+                        borderColor:
+                          "#2563eb",
+
+                        borderWidth: 1,
+
+                        yAxisID: "y"
+
+                      },
+
+                      {
+
+                        type: "line",
+
+                        label: config.lineKey,
+
+                        data: sheet.data.map(
+                          row =>
+                            parseVal(
+                              row[lineCol.key]
+                            )
+                        ),
+
+                        borderColor:
+                          "#ef4444",
+
+                        backgroundColor:
+                          "#ef4444",
+
+                        tension: 0.2,
+
+                        yAxisID: "y1"
+
+                      }
+
+                    ]
+
+                  },
+
+                  options: {
+
+                    responsive: true,
+
+                    maintainAspectRatio: false,
+
+                    interaction: {
+                      mode: "index",
+                      intersect: false
+                    },
+
+                    scales: {
+
+                      y: {
+
+                        type: "linear",
+
+                        position: "left",
+
+                        beginAtZero: true
+
+                      },
+
+                      y1: {
+
+                        type: "linear",
+
+                        position: "right",
+
+                        beginAtZero: true,
+
+                        grid: {
+                          drawOnChartArea: false
+                        }
+
+                      }
+
+                    }
+
+                  }
+
+                }
+              );
+
+          }
+
+
+          if (
+            config.type ===
+            "double_line"
+          ) {
+
+            const col1 =
+              findColumnByTitle(
+                sheet,
+                config.line1Key
+              );
+
+            const col2 =
+              findColumnByTitle(
+                sheet,
+                config.line2Key
+              );
+
+            if (
+              !col1 ||
+              !col2
+            ) {
+              return;
+            }
+
+
+            window.chartInstances[config.id] =
+              new Chart(
+                canvas,
+                {
+
+                  type: "line",
+
+                  data: {
+
+                    labels,
+
+                    datasets: [
+
+                      {
+
+                        label: config.line1Key,
+
+                        data: sheet.data.map(
+                          row =>
+                            parseVal(
+                              row[col1.key]
+                            )
+                        ),
+
+                        borderColor:
+                          "#2563eb",
+
+                        backgroundColor:
+                          "rgba(37,99,235,0.1)",
+
+                        tension: 0.2,
+
+                        fill: false
+
+                      },
+
+                      {
+
+                        label: config.line2Key,
+
+                        data: sheet.data.map(
+                          row =>
+                            parseVal(
+                              row[col2.key]
+                            )
+                        ),
+
+                        borderColor:
+                          "#10b981",
+
+                        backgroundColor:
+                          "rgba(16,185,129,0.1)",
+
+                        tension: 0.2,
+
+                        fill: false
+
+                      }
+
+                    ]
+
+                  },
+
+                  options:
+                    standardChartOptions()
+
+                }
+              );
+
+          }
+
+        }
+      );
+
+    }
+
+
+    /* =========================================================
+       Create S3 Chart
+    ========================================================= */
+
+    function createS3Chart(sheet) {
+
+      const canvas =
+        document.getElementById(
+          "canvas-s3_chart"
+        );
+
+      if (!canvas) return;
+
+      const labels = sheet.data.map(
+        row => row.month || "-"
+      );
+
+      const valueColumns =
+        sheet.columns.filter(
+          col =>
+            col.key.startsWith("val_")
+        );
+
+
+      const datasets =
+        valueColumns.map(
+          (col, index) => {
+
+            const colors = [
+              "#2563eb",
+              "#10b981",
+              "#f59e0b",
+              "#ef4444",
+              "#8b5cf6",
+              "#06b6d4"
+            ];
+
+            const color =
+              colors[
+                index % colors.length
+              ];
+
+            return {
+
+              label: col.title,
+
+              data: sheet.data.map(
+                row =>
+                  parseVal(
+                    row[col.key]
+                  )
+              ),
+
+              borderColor: color,
+
+              backgroundColor: color,
+
+              tension: 0.2,
+
+              fill: false
+
+            };
+
+          }
+        );
+
+
+      window.chartInstances.s3_chart =
+        new Chart(
+          canvas,
+          {
+
+            type: "line",
+
+            data: {
+
+              labels,
+
+              datasets
+
+            },
+
+            options:
+              standardChartOptions()
+
+          }
+        );
+
+    }
+
+
+    /* =========================================================
+       Create S4 Chart
+    ========================================================= */
+
+    function createS4Chart(sheet) {
+
+      const canvas =
+        document.getElementById(
+          "canvas-s4_chart"
+        );
+
+      if (!canvas) return;
+
+      const labels = sheet.data.map(
+        row =>
+          row.customer ||
+          "未命名"
+      );
+
+
+      const monthColumns =
+        sheet.columns.filter(
+          col =>
+            col.key.startsWith("m_")
+        );
+
+
+      const colors = [
+        "#2563eb",
+        "#10b981",
+        "#f59e0b",
+        "#ef4444",
+        "#8b5cf6",
+        "#06b6d4",
+        "#ec4899",
+        "#64748b",
+        "#14b8a6",
+        "#f97316",
+        "#6366f1",
+        "#84cc16"
+      ];
+
+
+      const datasets =
+        monthColumns.map(
+          (col, index) => {
+
+            const color =
+              colors[
+                index % colors.length
+              ];
+
+            return {
+
+              label: col.title,
+
+              data: sheet.data.map(
+                row =>
+                  parseVal(
+                    row[col.key]
+                  )
+              ),
+
+              backgroundColor: color,
+
+              borderColor: color,
+
+              borderWidth: 1
+
+            };
+
+          }
+        );
+
+
+      window.chartInstances.s4_chart =
+        new Chart(
+          canvas,
+          {
+
+            type: "bar",
+
+            data: {
+
+              labels,
+
+              datasets
+
+            },
+
+            options: {
+
+              responsive: true,
+
+              maintainAspectRatio: false,
+
+              interaction: {
+                mode: "index",
+                intersect: false
+              },
+
+              plugins: {
+
+                legend: {
+                  position: "top"
+                }
+
+              },
+
+              scales: {
+
+                x: {
+                  stacked: false
+                },
+
+                y: {
+
+                  beginAtZero: true,
+
+                  ticks: {
+
+                    callback: function(value) {
+
+                      return Number(value)
+                        .toLocaleString();
+
+                    }
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          }
+        );
+
+    }
+
+
+    /* =========================================================
+       Render Charts
+    ========================================================= */
+
+    function renderCharts(
+      currentSheet,
+      sheetType
+    ) {
+
+      setTimeout(
+        () => {
+
+          destroyAllCharts();
+
+          if (
+            !currentSheet ||
+            !currentSheet.data ||
+            currentSheet.data.length === 0
+          ) {
+            return;
+          }
+
+          if (sheetType === "s1") {
+            createS1Charts(currentSheet);
+          }
+
+          if (sheetType === "s2") {
+            createS2Charts(currentSheet);
+          }
+
+          if (sheetType === "s3") {
+            createS3Chart(currentSheet);
+          }
+
+          if (sheetType === "s4") {
+            createS4Chart(currentSheet);
+          }
+
+        },
+        100
+      );
+
+    }
+
+
+    /* =========================================================
+       Firebase Save
+    ========================================================= */
 
     window.saveToFirebase = async function() {
-      if (!window.currentUser) return;
-      try {
-        const statusEl = document.getElementById('firebase-status');
-        if (statusEl) { statusEl.className = 'status-badge loading'; statusEl.innerText = '● Firebase 儲存中...'; }
-        await setDoc(docRef, {
-          sheets: window.sheets,
-          logoUrl: window.logoUrl,
-          updatedAt: new Date().toISOString()
-        });
-        if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
-      } catch (e) {
-        console.error("Firebase 寫入失敗:", e);
+
+      if (!window.currentUser) {
+        return;
       }
+
+      const statusEl =
+        document.getElementById(
+          "firebase-status"
+        );
+
+      try {
+
+        if (statusEl) {
+
+          statusEl.className =
+            "status-badge loading";
+
+          statusEl.innerText =
+            "● Firebase 儲存中...";
+
+        }
+
+
+        await setDoc(
+          docRef,
+          {
+
+            sheets:
+              window.sheets,
+
+            logoUrl:
+              window.logoUrl,
+
+            updatedAt:
+              new Date().toISOString()
+
+          }
+        );
+
+
+        if (statusEl) {
+
+          statusEl.className =
+            "status-badge success";
+
+          statusEl.innerText =
+            "● Firebase 已連線同步";
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Firebase 寫入失敗:",
+          error
+        );
+
+        if (statusEl) {
+
+          statusEl.className =
+            "status-badge read-only";
+
+          statusEl.innerText =
+            "● Firebase 儲存失敗";
+
+        }
+
+        alert(
+          "Firebase 儲存失敗：\n" +
+          error.message
+        );
+
+      }
+
     };
+
+
+    /* =========================================================
+       Authentication
+    ========================================================= */
+
+    onAuthStateChanged(
+      auth,
+      user => {
+
+        window.currentUser = user;
+
+        const authBtn =
+          document.getElementById(
+            "auth-btn"
+          );
+
+        const authBtnText =
+          document.getElementById(
+            "auth-btn-text"
+          );
+
+        const name =
+          document.getElementById(
+            "user-name"
+          );
+
+        const emailText =
+          document.getElementById(
+            "user-email-text"
+          );
+
+        const addBtn =
+          document.getElementById(
+            "btn-add-tab"
+          );
+
+        const importBtn =
+          document.getElementById(
+            "btn-import-excel"
+          );
+
+
+        if (user) {
+
+          authBtnText.innerText =
+            "登出";
+
+          authBtn.className =
+            "btn btn-danger";
+
+          emailText.innerText =
+            user.email || "";
+
+          name.style.display =
+            "inline-block";
+
+          addBtn.disabled =
+            false;
+
+          importBtn.classList.remove(
+            "disabled"
+          );
+
+          importBtn.style.cursor =
+            "pointer";
+
+        } else {
+
+          authBtnText.innerText =
+            "管理員登入";
+
+          authBtn.className =
+            "btn btn-light";
+
+          name.style.display =
+            "none";
+
+          addBtn.disabled =
+            true;
+
+          importBtn.classList.add(
+            "disabled"
+          );
+
+          importBtn.style.cursor =
+            "not-allowed";
+
+        }
+
+
+        renderTabs();
+        renderMainContent();
+
+      }
+    );
+
+
+    /* =========================================================
+       Login Button
+    ========================================================= */
+
+    document
+      .getElementById("auth-btn")
+      .addEventListener(
+        "click",
+        () => {
+
+          if (window.currentUser) {
+
+            signOut(auth)
+              .then(
+                () =>
+                  alert(
+                    "已成功登出！"
+                  )
+              )
+              .catch(
+                error =>
+                  alert(
+                    "登出失敗：" +
+                    error.message
+                  )
+              );
+
+          } else {
+
+            document
+              .getElementById(
+                "login-modal"
+              )
+              .style.display = "flex";
+
+          }
+
+        }
+      );
+
+
+    /* =========================================================
+       Login Submit
+    ========================================================= */
+
+    document
+      .getElementById("do-login-btn")
+      .addEventListener(
+        "click",
+        async () => {
+
+          const email =
+            document
+              .getElementById(
+                "login-email"
+              )
+              .value
+              .trim();
+
+          const password =
+            document
+              .getElementById(
+                "login-password"
+              )
+              .value;
+
+
+          if (!email || !password) {
+
+            alert(
+              "請輸入 Email 與密碼！"
+            );
+
+            return;
+
+          }
+
+
+          const btn =
+            document.getElementById(
+              "do-login-btn"
+            );
+
+          btn.disabled = true;
+
+          btn.innerText =
+            "登入中...";
+
+
+          try {
+
+            await signInWithEmailAndPassword(
+              auth,
+              email,
+              password
+            );
+
+            closeLoginModal();
+
+            alert(
+              "登入成功！已解除編輯鎖定。"
+            );
+
+          } catch (error) {
+
+            console.error(
+              "登入失敗:",
+              error
+            );
+
+            alert(
+              "登入失敗：\n" +
+              error.message
+            );
+
+          } finally {
+
+            btn.disabled = false;
+
+            btn.innerText =
+              "確認登入";
+
+          }
+
+        }
+      );
+
+
+    window.closeLoginModal =
+      function() {
+
+        document
+          .getElementById(
+            "login-modal"
+          )
+          .style.display =
+          "none";
+
+        document
+          .getElementById(
+            "login-password"
+          )
+          .value = "";
+
+      };
+
+
+    /* =========================================================
+       Firebase Snapshot
+    ========================================================= */
 
     let isDataLoaded = false;
-    const connectionTimeout = setTimeout(() => {
-      if (!isDataLoaded) {
-        const statusEl = document.getElementById('firebase-status');
+
+    const connectionTimeout =
+      setTimeout(
+        () => {
+
+          if (!isDataLoaded) {
+
+            const statusEl =
+              document.getElementById(
+                "firebase-status"
+              );
+
+            if (statusEl) {
+
+              statusEl.className =
+                "status-badge read-only";
+
+              statusEl.innerText =
+                "● Firebase 連線逾時，使用預設資料";
+
+            }
+
+            renderTabs();
+            renderMainContent();
+
+          }
+
+        },
+        3000
+      );
+
+
+    onSnapshot(
+      docRef,
+
+      docSnap => {
+
+        isDataLoaded = true;
+
+        clearTimeout(
+          connectionTimeout
+        );
+
+
+        const statusEl =
+          document.getElementById(
+            "firebase-status"
+          );
+
+
         if (statusEl) {
-          statusEl.className = 'status-badge read-only';
-          statusEl.innerText = '● 離線模式 (預設資料載入)';
+
+          statusEl.className =
+            window.currentUser
+              ? "status-badge success"
+              : "status-badge read-only";
+
+          statusEl.innerText =
+            window.currentUser
+              ? "● Firebase 已連線 (管理員權限)"
+              : "● Firebase 唯讀模式 (未登入)";
+
         }
-        window.renderTabs();
-        window.renderMainContent();
-      }
-    }, 2000);
 
-    onSnapshot(docRef, (docSnap) => {
-      isDataLoaded = true;
-      clearTimeout(connectionTimeout);
 
-      const statusEl = document.getElementById('firebase-status');
-      if (statusEl) { 
-        statusEl.className = window.currentUser ? 'status-badge success' : 'status-badge read-only'; 
-        statusEl.innerText = window.currentUser ? '● Firebase 已連線 (管理員權限)' : '● Firebase 唯讀模式 (未登入)'; 
-      }
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.sheets && Array.isArray(data.sheets)) {
-          window.sheets = data.sheets.map(s => ({
-            id: s.id,
-            name: s.name,
-            columns: s.columns ? JSON.parse(JSON.stringify(s.columns)) : JSON.parse(JSON.stringify(defaultColumns1)),
-            data: s.data || []
-          }));
+        if (docSnap.exists()) {
+
+          const data =
+            docSnap.data();
+
+
+          if (
+            data.sheets &&
+            Array.isArray(data.sheets) &&
+            data.sheets.length > 0
+          ) {
+
+            window.sheets =
+              data.sheets.map(
+                (sheet, index) => ({
+
+                  id:
+                    sheet.id ||
+                    `s_${index}_${Date.now()}`,
+
+                  name:
+                    sheet.name ||
+                    `工作表${index + 1}`,
+
+                  columns:
+                    Array.isArray(
+                      sheet.columns
+                    )
+                      ? JSON.parse(
+                          JSON.stringify(
+                            sheet.columns
+                          )
+                        )
+                      : JSON.parse(
+                          JSON.stringify(
+                            defaultColumns1
+                          )
+                        ),
+
+                  data:
+                    Array.isArray(
+                      sheet.data
+                    )
+                      ? sheet.data
+                      : []
+
+                })
+              );
+
+          }
+
+
+          if (
+            data.logoUrl !== undefined
+          ) {
+
+            window.logoUrl =
+              data.logoUrl || "";
+
+            renderLogo();
+
+          }
+
         }
-        if (data.logoUrl !== undefined) {
-          window.logoUrl = data.logoUrl;
-          window.renderLogo();
+
+
+        if (
+          !window.sheets.some(
+            sheet =>
+              sheet.id ===
+              window.activeSheetId
+          )
+        ) {
+
+          window.activeSheetId =
+            window.sheets[0]?.id;
+
         }
-      }
-      window.renderTabs();
-      window.renderMainContent();
-    }, (error) => {
-      console.warn("Firebase 監聽略過或失敗，切換為本地模式:", error);
-      clearTimeout(connectionTimeout);
-      isDataLoaded = true;
-      const statusEl = document.getElementById('firebase-status');
-      if (statusEl) {
-        statusEl.className = 'status-badge read-only';
-        statusEl.innerText = '● 離線模式 (唯讀)';
-      }
-      window.renderTabs();
-      window.renderMainContent();
-    });
 
-    window.exportCurrentSheetExcel = function() {
-      const currentSheet = window.sheets.find(s => s.id === window.activeSheetId);
-      if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
-        return alert('目前工作表無資料可供匯出！');
-      }
-      try {
-        const exportData = currentSheet.data.map(row => {
-          let newRow = {};
-          currentSheet.columns.forEach(col => {
-            newRow[col.title] = row[col.key] !== undefined ? row[col.key] : '-';
-          });
-          return newRow;
-        });
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, currentSheet.name.substring(0, 30));
-        XLSX.writeFile(workbook, `${currentSheet.name}_匯出資料.xlsx`);
-      } catch (err) {
-        alert('匯出 Excel 失敗：' + err.message);
-      }
-    };
 
-    document.getElementById('upload-excel').addEventListener('change', function(e) {
-      if (!window.currentUser) return alert('請先登入管理員帳號後再進行匯入！');
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
+        renderTabs();
+        renderMainContent();
+
+      },
+
+      error => {
+
+        console.warn(
+          "Firebase Snapshot 失敗:",
+          error
+        );
+
+        clearTimeout(
+          connectionTimeout
+        );
+
+        isDataLoaded = true;
+
+
+        const statusEl =
+          document.getElementById(
+            "firebase-status"
+          );
+
+        if (statusEl) {
+
+          statusEl.className =
+            "status-badge read-only";
+
+          statusEl.innerText =
+            "● 離線模式 / Firebase 無法連線";
+
+        }
+
+
+        renderTabs();
+        renderMainContent();
+
+      }
+    );
+
+
+    /* =========================================================
+       Excel Export
+    ========================================================= */
+
+    window.exportCurrentSheetExcel =
+      function() {
+
+        const currentSheet =
+          window.sheets.find(
+            sheet =>
+              sheet.id ===
+              window.activeSheetId
+          );
+
+
+        if (
+          !currentSheet ||
+          !currentSheet.data ||
+          currentSheet.data.length === 0
+        ) {
+
+          alert(
+            "目前工作表無資料可供匯出！"
+          );
+
+          return;
+
+        }
+
+
         try {
-          const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
-          if (rawJson.length === 0) return alert('Excel 檔案無資料！');
-          const parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h.trim() }));
-          const targetIndex = window.sheets.findIndex(s => s.id === window.activeSheetId);
-          if (targetIndex !== -1) {
-            window.sheets[targetIndex].columns = parsedColumns;
-            window.sheets[targetIndex].data = rawJson;
-            window.saveToFirebase();
-            window.renderMainContent();
-          }
-        } catch (err) {
-          alert('解析 Excel 失敗！');
+
+          const exportData =
+            currentSheet.data.map(
+              row => {
+
+                const newRow = {};
+
+                currentSheet.columns
+                  .forEach(
+                    col => {
+
+                      newRow[
+                        col.title
+                      ] =
+                        row[col.key] !==
+                        undefined
+                          ? row[col.key]
+                          : "";
+
+                    }
+                  );
+
+                return newRow;
+
+              }
+            );
+
+
+          const worksheet =
+            XLSX.utils.json_to_sheet(
+              exportData
+            );
+
+          const workbook =
+            XLSX.utils.book_new();
+
+
+          XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            safeSheetName(
+              currentSheet.name
+            )
+          );
+
+
+          XLSX.writeFile(
+            workbook,
+            `${safeSheetName(
+              currentSheet.name
+            )}_匯出資料.xlsx`
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "Excel 匯出失敗:",
+            error
+          );
+
+          alert(
+            "匯出 Excel 失敗：\n" +
+            error.message
+          );
+
         }
-        e.target.value = '';
+
       };
-      reader.readAsArrayBuffer(file);
-    });
 
-    window.renderLogo = function() {
-      const logoBox = document.getElementById('logo-box');
-      if (!logoBox) return;
-      if (window.logoUrl && window.logoUrl.trim() !== '') {
-        logoBox.innerHTML = `<img src="${window.logoUrl}" alt="Logo" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fa-solid fa-chart-line\\'></i>';" />`;
-      } else {
-        logoBox.innerHTML = `<i class="fa-solid fa-chart-line" id="logo-icon"></i>`;
-      }
-    };
 
-    window.changeLogoUrl = function() {
-      if (!window.currentUser) return alert('請登入管理員帳號後再更換 Logo！');
-      const inputUrl = prompt("請輸入 Logo 圖示的圖片網址 (URL)：", window.logoUrl || "");
-      if (inputUrl !== null) {
-        window.logoUrl = inputUrl.trim();
-        window.renderLogo();
-        window.saveToFirebase();
-      }
-    };
+    /* =========================================================
+       Excel Import
+    ========================================================= */
 
-    window.renderTabs = function() {
-      const container = document.getElementById('sheet-tabs-list');
-      if (!container) return;
-      let html = '';
-      const isLogined = !!window.currentUser;
-      window.sheets.forEach(s => {
-        const isActive = s.id === window.activeSheetId ? 'active' : '';
-        html += `
-          <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')">
-            <div>
-              <i class="fa-solid fa-table" style="margin-right: 6px;"></i>
-              <span id="sheet-title-${s.id}" ${isLogined ? `ondblclick="editSheetName('${s.id}')"` : ''}>${s.name}</span>
-            </div>
-            <div>
-              ${isLogined ? `<i class="fa-solid fa-pen-to-square tab-edit-icon" title="修改名稱" onclick="event.stopPropagation(); editSheetName('${s.id}');"></i>` : ''}
-              ${(window.sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" title="刪除工作表" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
-            </div>
-          </div>
-        `;
-      });
-      container.innerHTML = html;
-    };
+    document
+      .getElementById(
+        "upload-excel"
+      )
+      .addEventListener(
+        "change",
+        function(event) {
 
-    window.switchTab = function(sheetId) {
-      window.activeSheetId = sheetId;
-      window.renderTabs();
-      window.renderMainContent();
-    };
+          if (!window.currentUser) {
 
-    window.editSheetName = function(sheetId) {
-      if (!window.currentUser) return;
-      const targetSheet = window.sheets.find(s => s.id === sheetId);
-      const newName = prompt("請輸入新的工作表名稱：", targetSheet?.name || "");
-      if (newName && newName.trim() !== "") {
-        targetSheet.name = newName.trim();
-        window.saveToFirebase();
-        window.renderTabs();
-        window.renderMainContent();
-      }
-    };
+            alert(
+              "請先登入管理員帳號後再進行匯入！"
+            );
 
-    window.addNewSheet = function() {
-      if (!window.currentUser) return;
-      const newId = `s_${Date.now()}`;
-      const newName = `工作表${window.sheets.length + 1}`;
-      const defaultCols = [
-        { key: "month", title: "月份/時間" },
-        { key: "col_1", title: "項目一" },
-        { key: "col_2", title: "項目二" }
-      ];
-      window.sheets.push({ id: newId, name: newName, columns: defaultCols, data: [] });
-      window.activeSheetId = newId;
-      window.saveToFirebase();
-      window.renderTabs();
-      window.renderMainContent();
-    };
+            event.target.value = "";
 
-    window.deleteSheet = function(e, sheetId) {
-      e.stopPropagation();
-      if (!window.currentUser) return;
-      if (window.sheets.length <= 1) return alert('至少需保留一個工作表！');
-      if (confirm('確定要刪除此工作表嗎？')) {
-        window.sheets = window.sheets.filter(s => s.id !== sheetId);
-        if (window.activeSheetId === sheetId) window.activeSheetId = window.sheets[0].id;
-        window.saveToFirebase();
-        window.renderTabs();
-        window.renderMainContent();
-      }
-    };
+            return;
 
-    window.addRow = function() {
-      if (!window.currentUser) return;
-      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
-      if (!curSheet) return;
-      const newRow = {};
-      (curSheet.columns || []).forEach(col => newRow[col.key] = "-");
-      curSheet.data.push(newRow);
-      window.saveToFirebase();
-      window.renderMainContent();
-    };
-
-    window.deleteRow = function() {
-      if (!window.currentUser) return;
-      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
-      if (!curSheet || curSheet.data.length === 0) return;
-      curSheet.data.pop();
-      window.saveToFirebase();
-      window.renderMainContent();
-    };
-
-    window.addColumn = function() {
-      if (!window.currentUser) return;
-      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
-      if (!curSheet) return;
-      const colName = prompt("請輸入新增欄位名稱：", "新欄位");
-      if (!colName || colName.trim() === "") return;
-      const newKey = `custom_col_${Date.now()}`;
-      curSheet.columns.push({ key: newKey, title: colName.trim() });
-      curSheet.data.forEach(row => { row[newKey] = "-"; });
-      window.saveToFirebase();
-      window.renderMainContent();
-    };
-
-    window.deleteColumn = function() {
-      if (!window.currentUser) return;
-      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
-      if (!curSheet || curSheet.columns.length <= 1) return alert('至少需要保留一個欄位！');
-      const deletedCol = curSheet.columns.pop();
-      curSheet.data.forEach(row => { delete row[deletedCol.key]; });
-      window.saveToFirebase();
-      window.renderMainContent();
-    };
-
-    window.updateCellData = function(rowIndex, colKey, value) {
-      const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
-      if (curSheet && curSheet.data[rowIndex]) {
-        curSheet.data[rowIndex][colKey] = value.trim();
-        window.saveToFirebase();
-      }
-    };
-
-    window.exportChartToPNG = function(chartId, title) {
-      const el = document.getElementById(`export-area-${chartId}`);
-      if (!el) return;
-      html2canvas(el).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `${title}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      });
-    };
-
-    window.renderMainContent = function() {
-      const container = document.getElementById('main-content');
-      const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
-      const isLogined = !!window.currentUser;
-      const sheetColumns = currentSheet.columns || [];
-      let html = '';
-
-      if (isLogined) {
-        html += `
-          <div class="table-toolbar">
-            <button class="btn btn-light" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列 (Row)</button>
-            <button class="btn btn-light" onclick="deleteRow()"><i class="fa-solid fa-minus"></i> 刪除最後一列</button>
-            <button class="btn btn-light" onclick="addColumn()"><i class="fa-solid fa-columns"></i> 新增欄位 (Column)</button>
-            <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
-          </div>
-        `;
-      }
-
-      if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
-        html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。</div>`;
-      } else {
-        html += `<div class="table-responsive-wrapper"><table class="custom-table"><thead><tr>`;
-        sheetColumns.forEach(col => { html += `<th>${col.title}</th>`; });
-        html += `</tr></thead><tbody>`;
-        currentSheet.data.forEach((row, rIdx) => {
-          html += `<tr>`;
-          sheetColumns.forEach(col => {
-            html += `<td ${isLogined ? `contenteditable="true" onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)"` : ''}>${row[col.key] !== undefined ? row[col.key] : '-'}</td>`;
-          });
-          html += `</tr>`;
-        });
-        html += `</tbody></table></div>`;
-      }
-
-      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
-      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
-      const isThirdSheet = (currentSheet.id === "s3" || currentSheet.name === "複材占比");
-      const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客戶累積產值");
-
-      if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
-        html += `<div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 分析圖表</div><div class="charts-grid">`;
-        window.sheet1ChartConfigs.forEach(cp => {
-          html += `
-            <div class="chart-page" id="export-area-${cp.id}">
-              <div class="chart-header">
-                <div class="chart-title"><i class="fa-solid fa-chart-area" style="color:#7e22ce;"></i> ${cp.title}</div>
-                <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
-              </div>
-              <div class="chart-wrapper"><canvas id="canvas-${cp.id}"></canvas></div>
-            </div>
-          `;
-        });
-        html += `</div>`;
-      } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
-        html += `<div class="charts-section-title"><i class="fa-solid fa-chart-pie"></i> 刀具費與成本趨勢分析</div><div class="charts-grid-2col">`;
-        window.sheet2ChartConfigs.forEach(cp => {
-          html += `
-            <div class="chart-page" id="export-area-${cp.id}">
-              <div class="chart-header">
-                <div class="chart-title"><i class="fa-solid fa-chart-column" style="color:#0284c7;"></i> ${cp.title}</div>
-                <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
-              </div>
-              <div class="chart-wrapper"><canvas id="canvas-${cp.id}"></canvas></div>
-            </div>
-          `;
-        });
-        html += `</div>`;
-      } else if (isThirdSheet && currentSheet.data && currentSheet.data.length > 0) {
-        html += `
-          <div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 複材占比趨勢分析圖</div>
-          <div class="charts-grid" style="margin-bottom: 30px;">
-            <div class="chart-page" id="export-area-s3_chart">
-              <div class="chart-header">
-                <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> 複材占比分析趨勢</div>
-                <button class="btn btn-success" onclick="exportChartToPNG('s3_chart', '複材占比分析趨勢')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
-              </div>
-              <div class="chart-wrapper"><canvas id="canvas-s3_chart"></canvas></div>
-            </div>
-          </div>
-        `;
-      } else if (isFourthSheet && currentSheet.data && currentSheet.data.length > 0) {
-        html += `
-          <div class="charts-section-title"><i class="fa-solid fa-chart-column"></i> 各客戶各月份累積產值分佈</div>
-          <div class="charts-grid" style="margin-bottom: 30px;">
-            <div class="chart-page" id="export-area-s4_chart">
-              <div class="chart-header">
-                <div class="chart-title"><i class="fa-solid fa-chart-column" style="color:#10b981;"></i> 各客戶產值柱狀圖</div>
-                <button class="btn btn-success" onclick="exportChartToPNG('s4_chart', '各客戶產值柱狀圖')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
-              </div>
-              <div class="chart-wrapper"><canvas id="canvas-s4_chart"></canvas></div>
-            </div>
-          </div>
-        `;
-      }
-
-      container.innerHTML = html;
-
-      // 畫面渲染完成後，延遲建立 Chart.js 圖表實例（使用 parseVal 確保千分位數值正確轉換）
-      setTimeout(() => {
-        if (isFourthSheet && currentSheet.data && currentSheet.data.length > 0) {
-          const ctx = document.getElementById('canvas-s4_chart');
-          if (ctx) {
-            if (window.chartInstances['s4_chart']) window.chartInstances['s4_chart'].destroy();
-            const labels = currentSheet.data.map(r => r.customer || '未命名');
-            const monthCols = currentSheet.columns.filter(c => c.key.startsWith('m_'));
-            const datasets = monthCols.map((col, idx) => {
-              const colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
-              return {
-                label: col.title,
-                data: currentSheet.data.map(r => parseVal(r[col.key])),
-                backgroundColor: colors[idx % colors.length]
-              };
-            });
-            window.chartInstances['s4_chart'] = new Chart(ctx, {
-              type: 'bar',
-              data: { labels, datasets },
-              options: { responsive: true, maintainAspectRatio: false }
-            });
           }
+
+
+          const file =
+            event.target.files[0];
+
+          if (!file) return;
+
+
+          const reader =
+            new FileReader();
+
+
+          reader.onload =
+            async function(evt) {
+
+              try {
+
+                const data =
+                  new Uint8Array(
+                    evt.target.result
+                  );
+
+
+                const workbook =
+                  XLSX.read(
+                    data,
+                    {
+                      type: "array"
+                    }
+                  );
+
+
+                if (
+                  !workbook.SheetNames.length
+                ) {
+
+                  alert(
+                    "Excel 沒有工作表！"
+                  );
+
+                  return;
+
+                }
+
+
+                const worksheet =
+                  workbook.Sheets[
+                    workbook.SheetNames[0]
+                  ];
+
+
+                const rawJson =
+                  XLSX.utils.sheet_to_json(
+                    worksheet,
+                    {
+                      raw: false,
+                      defval: ""
+                    }
+                  );
+
+
+                if (
+                  rawJson.length === 0
+                ) {
+
+                  alert(
+                    "Excel 檔案無資料！"
+                  );
+
+                  return;
+
+                }
+
+
+                const headers =
+                  Object.keys(
+                    rawJson[0]
+                  );
+
+
+                const parsedColumns =
+                  headers.map(
+                    (header, index) => ({
+
+                      key:
+                        `excel_col_${index}_${Date.now()}`,
+
+                      title:
+                        String(
+                          header
+                        ).trim() ||
+                        `欄位${index + 1}`
+
+                    })
+                  );
+
+
+                const parsedData =
+                  rawJson.map(
+                    row => {
+
+                      const newRow = {};
+
+                      parsedColumns
+                        .forEach(
+                          col => {
+
+                            const originalHeader =
+                              headers[
+                                parsedColumns.indexOf(
+                                  col
+                                )
+                              ];
+
+                            newRow[col.key] =
+                              row[
+                                originalHeader
+                              ] ?? "";
+
+                          }
+                        );
+
+                      return newRow;
+
+                    }
+                  );
+
+
+                const targetIndex =
+                  window.sheets.findIndex(
+                    sheet =>
+                      sheet.id ===
+                      window.activeSheetId
+                  );
+
+
+                if (
+                  targetIndex !== -1
+                ) {
+
+                  window.sheets[
+                    targetIndex
+                  ].columns =
+                    parsedColumns;
+
+                  window.sheets[
+                    targetIndex
+                  ].data =
+                    parsedData;
+
+
+                  await window.saveToFirebase();
+
+                  renderMainContent();
+
+                  alert(
+                    "Excel 匯入成功！"
+                  );
+
+                }
+
+              } catch (error) {
+
+                console.error(
+                  "Excel 解析失敗:",
+                  error
+                );
+
+                alert(
+                  "解析 Excel 失敗：\n" +
+                  error.message
+                );
+
+              } finally {
+
+                event.target.value = "";
+
+              }
+
+            };
+
+
+          reader.onerror =
+            function() {
+
+              alert(
+                "無法讀取 Excel 檔案！"
+              );
+
+              event.target.value = "";
+
+            };
+
+
+          reader.readAsArrayBuffer(
+            file
+          );
+
         }
-        else if (isThirdSheet && currentSheet.data && currentSheet.data.length > 0) {
-          const ctx = document.getElementById('canvas-s3_chart');
-          if (ctx) {
-            if (window.chartInstances['s3_chart']) window.chartInstances['s3_chart'].destroy();
-            const labels = currentSheet.data.map(r => r.month || '-');
-            const valCols = currentSheet.columns.filter(c => c.key.startsWith('val_'));
-            const datasets = valCols.map((col, idx) => {
-              const colors = ['#2563eb', '#10b981', '#f59e0b'];
-              return {
-                label: col.title,
-                data: currentSheet.data.map(r => parseVal(r[col.key])),
-                borderColor: colors[idx % colors.length],
-                backgroundColor: colors[idx % colors.length],
-                tension: 0.1
-              };
-            });
-            window.chartInstances['s3_chart'] = new Chart(ctx, {
-              type: 'line',
-              data: { labels, datasets },
-              options: { responsive: true, maintainAspectRatio: false }
-            });
+      );
+
+
+    /* =========================================================
+       Logo
+    ========================================================= */
+
+    window.renderLogo =
+      function() {
+
+        const logoBox =
+          document.getElementById(
+            "logo-box"
+          );
+
+        if (!logoBox) return;
+
+
+        if (
+          window.logoUrl &&
+          window.logoUrl.trim()
+        ) {
+
+          logoBox.innerHTML = "";
+
+          const img =
+            document.createElement(
+              "img"
+            );
+
+          img.src =
+            window.logoUrl;
+
+          img.alt =
+            "Logo";
+
+          img.onerror =
+            function() {
+
+              logoBox.innerHTML =
+                '<i class="fa-solid fa-chart-line"></i>';
+
+            };
+
+          logoBox.appendChild(img);
+
+        } else {
+
+          logoBox.innerHTML =
+            '<i class="fa-solid fa-chart-line"></i>';
+
+        }
+
+      };
+
+
+    window.changeLogoUrl =
+      function() {
+
+        if (!window.currentUser) {
+
+          alert(
+            "請登入管理員帳號後再更換 Logo！"
+          );
+
+          return;
+
+        }
+
+
+        const inputUrl =
+          prompt(
+            "請輸入 Logo 圖示的圖片網址 (URL)：",
+            window.logoUrl || ""
+          );
+
+
+        if (
+          inputUrl !== null
+        ) {
+
+          window.logoUrl =
+            inputUrl.trim();
+
+          renderLogo();
+
+          window.saveToFirebase();
+
+        }
+
+      };
+
+
+    /* =========================================================
+       Render Tabs
+    ========================================================= */
+
+    window.renderTabs =
+      function() {
+
+        const container =
+          document.getElementById(
+            "sheet-tabs-list"
+          );
+
+        if (!container) return;
+
+
+        const isLoggedIn =
+          !!window.currentUser;
+
+
+        container.innerHTML = "";
+
+
+        window.sheets.forEach(
+          sheet => {
+
+            const tab =
+              document.createElement(
+                "div"
+              );
+
+            tab.className =
+              "tab-item" +
+              (
+                sheet.id ===
+                window.activeSheetId
+                  ? " active"
+                  : ""
+              );
+
+
+            tab.addEventListener(
+              "click",
+              () =>
+                switchTab(
+                  sheet.id
+                )
+            );
+
+
+            const left =
+              document.createElement(
+                "div"
+              );
+
+            const icon =
+              document.createElement(
+                "i"
+              );
+
+            icon.className =
+              "fa-solid fa-table";
+
+            icon.style.marginRight =
+              "6px";
+
+
+            const title =
+              document.createElement(
+                "span"
+              );
+
+            title.textContent =
+              sheet.name;
+
+
+            if (isLoggedIn) {
+
+              title.addEventListener(
+                "dblclick",
+                event => {
+
+                  event.stopPropagation();
+
+                  editSheetName(
+                    sheet.id
+                  );
+
+                }
+              );
+
+            }
+
+
+            left.appendChild(icon);
+            left.appendChild(title);
+
+
+            const right =
+              document.createElement(
+                "div"
+              );
+
+
+            if (isLoggedIn) {
+
+              const edit =
+                document.createElement(
+                  "i"
+                );
+
+              edit.className =
+                "fa-solid fa-pen-to-square tab-edit-icon";
+
+              edit.title =
+                "修改名稱";
+
+              edit.addEventListener(
+                "click",
+                event => {
+
+                  event.stopPropagation();
+
+                  editSheetName(
+                    sheet.id
+                  );
+
+                }
+              );
+
+              right.appendChild(edit);
+
+
+              if (
+                window.sheets.length >
+                  1
+              ) {
+
+                const del =
+                  document.createElement(
+                    "i"
+                  );
+
+                del.className =
+                  "fa-solid fa-xmark tab-delete-btn";
+
+                del.title =
+                  "刪除工作表";
+
+                del.addEventListener(
+                  "click",
+                  event =>
+                    deleteSheet(
+                      event,
+                      sheet.id
+                    )
+                );
+
+                right.appendChild(del);
+
+              }
+
+            }
+
+
+            tab.appendChild(left);
+            tab.appendChild(right);
+
+            container.appendChild(tab);
+
           }
+        );
+
+      };
+
+
+    /* =========================================================
+       Switch Sheet
+    ========================================================= */
+
+    window.switchTab =
+      function(sheetId) {
+
+        if (
+          !window.sheets.some(
+            sheet =>
+              sheet.id ===
+              sheetId
+          )
+        ) {
+          return;
         }
-      }, 50);
-    };
+
+
+        window.activeSheetId =
+          sheetId;
+
+        renderTabs();
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Rename Sheet
+    ========================================================= */
+
+    window.editSheetName =
+      function(sheetId) {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const sheet =
+          window.sheets.find(
+            item =>
+              item.id ===
+              sheetId
+          );
+
+
+        if (!sheet) return;
+
+
+        const newName =
+          prompt(
+            "請輸入新的工作表名稱：",
+            sheet.name
+          );
+
+
+        if (
+          newName !== null &&
+          newName.trim() !== ""
+        ) {
+
+          sheet.name =
+            newName.trim();
+
+          window.saveToFirebase();
+
+          renderTabs();
+
+          renderMainContent();
+
+        }
+
+      };
+
+
+    /* =========================================================
+       Add Sheet
+    ========================================================= */
+
+    window.addNewSheet =
+      function() {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const newId =
+          generateId("sheet");
+
+
+        const newName =
+          `工作表${window.sheets.length + 1}`;
+
+
+        const defaultCols = [
+
+          {
+            key: "month",
+            title: "月份/時間"
+          },
+
+          {
+            key: "col_1",
+            title: "項目一"
+          },
+
+          {
+            key: "col_2",
+            title: "項目二"
+          }
+
+        ];
+
+
+        window.sheets.push({
+
+          id: newId,
+
+          name: newName,
+
+          columns: defaultCols,
+
+          data: []
+
+        });
+
+
+        window.activeSheetId =
+          newId;
+
+
+        window.saveToFirebase();
+
+        renderTabs();
+
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Delete Sheet
+    ========================================================= */
+
+    window.deleteSheet =
+      function(event, sheetId) {
+
+        event.stopPropagation();
+
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        if (
+          window.sheets.length <=
+          1
+        ) {
+
+          alert(
+            "至少需保留一個工作表！"
+          );
+
+          return;
+
+        }
+
+
+        const target =
+          window.sheets.find(
+            sheet =>
+              sheet.id ===
+              sheetId
+          );
+
+
+        if (!target) return;
+
+
+        if (
+          !confirm(
+            `確定要刪除工作表「${target.name}」嗎？\n\n此操作無法復原。`
+          )
+        ) {
+          return;
+        }
+
+
+        window.sheets =
+          window.sheets.filter(
+            sheet =>
+              sheet.id !==
+              sheetId
+          );
+
+
+        if (
+          window.activeSheetId ===
+          sheetId
+        ) {
+
+          window.activeSheetId =
+            window.sheets[0].id;
+
+        }
+
+
+        window.saveToFirebase();
+
+        renderTabs();
+
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Add Row
+    ========================================================= */
+
+    window.addRow =
+      function() {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const sheet =
+          window.sheets.find(
+            item =>
+              item.id ===
+              window.activeSheetId
+          );
+
+
+        if (!sheet) return;
+
+
+        const newRow = {};
+
+
+        sheet.columns.forEach(
+          column => {
+
+            newRow[column.key] =
+              "";
+
+          }
+        );
+
+
+        sheet.data.push(
+          newRow
+        );
+
+
+        window.saveToFirebase();
+
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Delete Row
+    ========================================================= */
+
+    window.deleteRow =
+      function() {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const sheet =
+          window.sheets.find(
+            item =>
+              item.id ===
+              window.activeSheetId
+          );
+
+
+        if (
+          !sheet ||
+          sheet.data.length === 0
+        ) {
+          return;
+        }
+
+
+        if (
+          !confirm(
+            "確定要刪除最後一列嗎？"
+          )
+        ) {
+          return;
+        }
+
+
+        sheet.data.pop();
+
+
+        window.saveToFirebase();
+
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Add Column
+    ========================================================= */
+
+    window.addColumn =
+      function() {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const sheet =
+          window.sheets.find(
+            item =>
+              item.id ===
+              window.activeSheetId
+          );
+
+
+        if (!sheet) return;
+
+
+        const colName =
+          prompt(
+            "請輸入新增欄位名稱：",
+            "新欄位"
+          );
+
+
+        if (
+          !colName ||
+          !colName.trim()
+        ) {
+          return;
+        }
+
+
+        const newKey =
+          generateId("col");
+
+
+        sheet.columns.push({
+
+          key: newKey,
+
+          title:
+            colName.trim()
+
+        });
+
+
+        sheet.data.forEach(
+          row => {
+
+            row[newKey] = "";
+
+          }
+        );
+
+
+        window.saveToFirebase();
+
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Delete Column
+    ========================================================= */
+
+    window.deleteColumn =
+      function() {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const sheet =
+          window.sheets.find(
+            item =>
+              item.id ===
+              window.activeSheetId
+          );
+
+
+        if (
+          !sheet ||
+          sheet.columns.length <=
+            1
+        ) {
+
+          alert(
+            "至少需要保留一個欄位！"
+          );
+
+          return;
+
+        }
+
+
+        const deletedColumn =
+          sheet.columns[
+            sheet.columns.length - 1
+          ];
+
+
+        if (
+          !confirm(
+            `確定要刪除欄位「${deletedColumn.title}」嗎？`
+          )
+        ) {
+          return;
+        }
+
+
+        sheet.columns.pop();
+
+
+        sheet.data.forEach(
+          row => {
+
+            delete row[
+              deletedColumn.key
+            ];
+
+          }
+        );
+
+
+        window.saveToFirebase();
+
+        renderMainContent();
+
+      };
+
+
+    /* =========================================================
+       Update Cell
+    ========================================================= */
+
+    window.updateCellData =
+      function(
+        rowIndex,
+        colKey,
+        value
+      ) {
+
+        if (!window.currentUser) {
+          return;
+        }
+
+
+        const sheet =
+          window.sheets.find(
+            item =>
+              item.id ===
+              window.activeSheetId
+          );
+
+
+        if (
+          !sheet ||
+          !sheet.data[rowIndex]
+        ) {
+          return;
+        }
+
+
+        sheet.data[
+          rowIndex
+        ][colKey] =
+          String(
+            value ?? ""
+          ).trim();
+
+
+        window.saveToFirebase();
+
+      };
+
+
+    /* =========================================================
+       Export Chart PNG
+    ========================================================= */
+
+    window.exportChartToPNG =
+      async function(
+        chartId,
+        title
+      ) {
+
+        const element =
+          document.getElementById(
+            `export-area-${chartId}`
+          );
+
+
+        if (!element) {
+          return;
+        }
+
+
+        try {
+
+          const canvas =
+            await html2canvas(
+              element,
+              {
+                backgroundColor:
+                  "#ffffff",
+
+                scale: 2,
+
+                useCORS: true
+              }
+            );
+
+
+          const link =
+            document.createElement(
+              "a"
+            );
+
+
+          link.download =
+            `${safeSheetName(
+              title
+            )}.png`;
+
+
+          link.href =
+            canvas.toDataURL(
+              "image/png"
+            );
+
+
+          link.click();
+
+        } catch (error) {
+
+          console.error(
+            "PNG 匯出失敗:",
+            error
+          );
+
+          alert(
+            "PNG 匯出失敗：\n" +
+            error.message
+          );
+
+        }
+
+      };
+
+
+    /* =========================================================
+       Render Main Content
+    ========================================================= */
+
+    window.renderMainContent =
+      function() {
+
+        const container =
+          document.getElementById(
+            "main-content"
+          );
+
+
+        if (!container) {
+          return;
+        }
+
+
+        if (
+          !window.sheets.length
+        ) {
+
+          container.innerHTML =
+            `
+              <div style="
+                text-align:center;
+                padding:50px;
+                background:#fff;
+                border-radius:8px;
+              ">
+                目前沒有工作表。
+              </div>
+            `;
+
+          return;
+
+        }
+
+
+        let currentSheet =
+          window.sheets.find(
+            sheet =>
+              sheet.id ===
+              window.activeSheetId
+          );
+
+
+        if (!currentSheet) {
+
+          currentSheet =
+            window.sheets[0];
+
+          window.activeSheetId =
+            currentSheet.id;
+
+        }
+
+
+        const isLoggedIn =
+          !!window.currentUser;
+
+
+        const columns =
+          Array.isArray(
+            currentSheet.columns
+          )
+            ? currentSheet.columns
+            : [];
+
+
+        let html = "";
+
+
+        /* -------------------------------------------------------
+           Toolbar
+        ------------------------------------------------------- */
+
+        if (isLoggedIn) {
+
+          html += `
+
+            <div class="table-toolbar">
+
+              <button
+                class="btn btn-light"
+                onclick="addRow()"
+              >
+                <i class="fa-solid fa-plus"></i>
+                新增列 (Row)
+              </button>
+
+              <button
+                class="btn btn-light"
+                onclick="deleteRow()"
+              >
+                <i class="fa-solid fa-minus"></i>
+                刪除最後一列
+              </button>
+
+              <button
+                class="btn btn-light"
+                onclick="addColumn()"
+              >
+                <i class="fa-solid fa-columns"></i>
+                新增欄位 (Column)
+              </button>
+
+              <button
+                class="btn btn-light"
+                onclick="deleteColumn()"
+              >
+                <i class="fa-solid fa-trash-can"></i>
+                刪除最後一欄
+              </button>
+
+            </div>
+
+          `;
+
+        }
+
+
+        /* -------------------------------------------------------
+           Empty Data
+        ------------------------------------------------------- */
+
+        if (
+          !currentSheet.data ||
+          currentSheet.data.length === 0
+        ) {
+
+          html += `
+
+            <div style="
+              text-align:center;
+              padding:40px;
+              color:#94a3b8;
+              background:#fff;
+              border-radius:8px;
+              margin-bottom:24px;
+              border:1px solid #e2e8f0;
+            ">
+              目前【${escapeHtml(
+                currentSheet.name
+              )}】無資料。
+            </div>
+
+          `;
+
+        } else {
+
+          /* -----------------------------------------------------
+             Table
+          ----------------------------------------------------- */
+
+          html += `
+
+            <div class="table-responsive-wrapper">
+
+              <table class="custom-table">
+
+                <thead>
+                  <tr>
+          `;
+
+
+          columns.forEach(
+            column => {
+
+              html += `
+                <th>
+                  ${escapeHtml(
+                    column.title
+                  )}
+                </th>
+              `;
+
+            }
+          );
+
+
+          html += `
+                  </tr>
+                </thead>
+
+                <tbody>
+          `;
+
+
+          currentSheet.data.forEach(
+            (row, rowIndex) => {
+
+              html += "<tr>";
+
+
+              columns.forEach(
+                column => {
+
+                  const value =
+                    row[
+                      column.key
+                    ] !== undefined
+                      ? row[
+                          column.key
+                        ]
+                      : "";
+
+
+                  html += `
+
+                    <td
+                      ${
+                        isLoggedIn
+                          ? `contenteditable="true"
+                             data-row="${rowIndex}"
+                             data-key="${escapeHtml(
+                               column.key
+                             )}"`
+                          : ""
+                      }
+                    >
+                      ${escapeHtml(
+                        value
+                      )}
+                    </td>
+
+                  `;
+
+                }
+              );
+
+
+              html += "</tr>";
+
+            }
+          );
+
+
+          html += `
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          `;
+
+        }
+
+
+        /* -------------------------------------------------------
+           Determine Sheet Type
+        ------------------------------------------------------- */
+
+        const isFirstSheet =
+          currentSheet.id === "s1" ||
+          currentSheet.name ===
+            "產能量能分析";
+
+
+        const isSecondSheet =
+          currentSheet.id === "s2" ||
+          currentSheet.name ===
+            "刀具費佔成本";
+
+
+        const isThirdSheet =
+          currentSheet.id === "s3" ||
+          currentSheet.name ===
+            "複材占比";
+
+
+        const isFourthSheet =
+          currentSheet.id === "s4" ||
+          currentSheet.name ===
+            "各客戶累積產值";
+
+
+        /* -------------------------------------------------------
+           S1
+        ------------------------------------------------------- */
+
+        if (
+          isFirstSheet &&
+          currentSheet.data &&
+          currentSheet.data.length > 0
+        ) {
+
+          html += `
+
+            <div class="charts-section-title">
+
+              <i class="fa-solid fa-chart-line"></i>
+
+              分析圖表
+
+            </div>
+
+            <div class="charts-grid">
+
+          `;
+
+
+          window.sheet1ChartConfigs
+            .forEach(
+              config => {
+
+                html += `
+
+                  <div
+                    class="chart-page"
+                    id="export-area-${escapeHtml(
+                      config.id
+                    )}"
+                  >
+
+                    <div class="chart-header">
+
+                      <div class="chart-title">
+
+                        <i
+                          class="fa-solid fa-chart-area"
+                          style="color:#7e22ce;"
+                        ></i>
+
+                        ${escapeHtml(
+                          config.title
+                        )}
+
+                      </div>
+
+                      <button
+                        class="btn btn-success"
+                        onclick="exportChartToPNG(
+                          '${escapeHtml(
+                            config.id
+                          )}',
+                          '${escapeHtml(
+                            config.title
+                          )}'
+                        )"
+                      >
+
+                        <i class="fa-solid fa-download"></i>
+
+                        匯出 PNG
+
+                      </button>
+
+                    </div>
+
+                    <div class="chart-wrapper">
+
+                      <canvas
+                        id="canvas-${escapeHtml(
+                          config.id
+                        )}"
+                      ></canvas>
+
+                    </div>
+
+                  </div>
+
+                `;
+
+              }
+            );
+
+
+          html += "</div>";
+
+        }
+
+
+        /* -------------------------------------------------------
+           S2
+        ------------------------------------------------------- */
+
+        else if (
+          isSecondSheet &&
+          currentSheet.data &&
+          currentSheet.data.length > 0
+        ) {
+
+          html += `
+
+            <div class="charts-section-title">
+
+              <i class="fa-solid fa-chart-pie"></i>
+
+              刀具費與成本趨勢分析
+
+            </div>
+
+            <div class="charts-grid-2col">
+
+          `;
+
+
+          window.sheet2ChartConfigs
+            .forEach(
+              config => {
+
+                html += `
+
+                  <div
+                    class="chart-page"
+                    id="export-area-${escapeHtml(
+                      config.id
+                    )}"
+                  >
+
+                    <div class="chart-header">
+
+                      <div class="chart-title">
+
+                        <i
+                          class="fa-solid fa-chart-column"
+                          style="color:#0284c7;"
+                        ></i>
+
+                        ${escapeHtml(
+                          config.title
+                        )}
+
+                      </div>
+
+                      <button
+                        class="btn btn-success"
+                        onclick="exportChartToPNG(
+                          '${escapeHtml(
+                            config.id
+                          )}',
+                          '${escapeHtml(
+                            config.title
+                          )}'
+                        )"
+                      >
+
+                        <i class="fa-solid fa-download"></i>
+
+                        匯出 PNG
+
+                      </button>
+
+                    </div>
+
+                    <div class="chart-wrapper">
+
+                      <canvas
+                        id="canvas-${escapeHtml(
+                          config.id
+                        )}"
+                      ></canvas>
+
+                    </div>
+
+                  </div>
+
+                `;
+
+              }
+            );
+
+
+          html += "</div>";
+
+        }
+
+
+        /* -------------------------------------------------------
+           S3
+        ------------------------------------------------------- */
+
+        else if (
+          isThirdSheet &&
+          currentSheet.data &&
+          currentSheet.data.length > 0
+        ) {
+
+          html += `
+
+            <div class="charts-section-title">
+
+              <i class="fa-solid fa-chart-line"></i>
+
+              複材占比趨勢分析圖
+
+            </div>
+
+            <div
+              class="charts-grid"
+              style="margin-bottom:30px;"
+            >
+
+              <div
+                class="chart-page"
+                id="export-area-s3_chart"
+              >
+
+                <div class="chart-header">
+
+                  <div class="chart-title">
+
+                    <i
+                      class="fa-solid fa-chart-line"
+                      style="color:#2563eb;"
+                    ></i>
+
+                    複材占比分析趨勢
+
+                  </div>
+
+                  <button
+                    class="btn btn-success"
+                    onclick="exportChartToPNG(
+                      's3_chart',
+                      '複材占比分析趨勢'
+                    )"
+                  >
+
+                    <i class="fa-solid fa-download"></i>
+
+                    匯出 PNG
+
+                  </button>
+
+                </div>
+
+                <div class="chart-wrapper">
+
+                  <canvas
+                    id="canvas-s3_chart"
+                  ></canvas>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+
+
+        /* -------------------------------------------------------
+           S4
+        ------------------------------------------------------- */
+
+        else if (
+          isFourthSheet &&
+          currentSheet.data &&
+          currentSheet.data.length > 0
+        ) {
+
+          html += `
+
+            <div class="charts-section-title">
+
+              <i class="fa-solid fa-chart-column"></i>
+
+              各客戶各月份累積產值分佈
+
+            </div>
+
+            <div
+              class="charts-grid"
+              style="margin-bottom:30px;"
+            >
+
+              <div
+                class="chart-page"
+                id="export-area-s4_chart"
+              >
+
+                <div class="chart-header">
+
+                  <div class="chart-title">
+
+                    <i
+                      class="fa-solid fa-chart-column"
+                      style="color:#10b981;"
+                    ></i>
+
+                    各客戶產值柱狀圖
+
+                  </div>
+
+                  <button
+                    class="btn btn-success"
+                    onclick="exportChartToPNG(
+                      's4_chart',
+                      '各客戶產值柱狀圖'
+                    )"
+                  >
+
+                    <i class="fa-solid fa-download"></i>
+
+                    匯出 PNG
+
+                  </button>
+
+                </div>
+
+                <div class="chart-wrapper">
+
+                  <canvas
+                    id="canvas-s4_chart"
+                  ></canvas>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+
+
+        container.innerHTML =
+          html;
+
+
+        /* -------------------------------------------------------
+           Cell Edit Event
+        ------------------------------------------------------- */
+
+        if (isLoggedIn) {
+
+          container
+            .querySelectorAll(
+              'td[contenteditable="true"]'
+            )
+            .forEach(
+              cell => {
+
+                cell.addEventListener(
+                  "blur",
+                  function() {
+
+                    const rowIndex =
+                      Number(
+                        this.dataset.row
+                      );
+
+                    const colKey =
+                      this.dataset.key;
+
+
+                    updateCellData(
+                      rowIndex,
+                      colKey,
+                      this.innerText
+                    );
+
+                  }
+                );
+
+              }
+            );
+
+        }
+
+
+        /* -------------------------------------------------------
+           Render Chart
+        ------------------------------------------------------- */
+
+        let sheetType = null;
+
+        if (isFirstSheet) {
+          sheetType = "s1";
+        } else if (isSecondSheet) {
+          sheetType = "s2";
+        } else if (isThirdSheet) {
+          sheetType = "s3";
+        } else if (isFourthSheet) {
+          sheetType = "s4";
+        }
+
+
+        renderCharts(
+          currentSheet,
+          sheetType
+        );
+
+      };
+
+
+    /* =========================================================
+       Initial Render
+    ========================================================= */
+
+    renderLogo();
+
+    renderTabs();
+
+    renderMainContent();
+
   </script>
+
 </body>
 </html>
