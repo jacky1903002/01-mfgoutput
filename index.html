@@ -790,18 +790,35 @@ function renderTreemap(sheet) {
       }
     }
 
-    window.exportChartToPNG = function(chartId, title) {
-      const element = document.getElementById(`export-area-${chartId}`);
-      if (!element) return;
-      html2canvas(element, { scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `${title.replace(/[^\w\u4e00-\u9fa5]/g, '_')}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      }).catch(err => {
-        alert("匯出圖片失敗，請稍後再試！");
-      });
-    };
+window.exportChartToPNG = function(chartId, title) {
+  const element = document.getElementById(`export-area-${chartId}`);
+  if (!element) return;
+  
+  // 1. 找出該區域內的匯出按鈕並隱藏，避免被拍進圖片裡
+  const btn = element.querySelector('.export-btn') || element.querySelector('button');
+  if (btn) btn.style.display = 'none';
+
+  // 2. 開始進行 canvas 截圖
+  html2canvas(element, { 
+    scale: 3, 
+    useCORS: true,
+    backgroundColor: '#ffffff'
+  }).then(canvas => {
+    // 3. 截圖完成後，立即把按鈕顯示回來
+    if (btn) btn.style.display = '';
+
+    // 4. 建立下載連結並自動儲存圖片
+    const link = document.createElement('a');
+    link.download = `${title}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  }).catch((err) => {
+    // 發生錯誤也要記得把按鈕復原
+    if (btn) btn.style.display = '';
+    console.error("匯出圖片失敗：", err);
+    alert("匯出圖片失敗！");
+  });
+};
   </script>
 </body>
 </html>
