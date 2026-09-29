@@ -623,39 +623,51 @@ function renderTreemap(sheet) {
     container.innerHTML = html;
 }
 
-    const yearSeparatorPlugin = {
+const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
         const labels = chart.data.labels || [];
+        
+        // 1. 找出每一個年份轉折點的索引
         const yearGroups = {};
         labels.forEach((lbl, idx) => {
-          const yrMatch = String(lbl).match(/\d{2}$/);
+          // 支援 "Jan-23" 或 "2023-01" 這種格式抓取年份
+          let yrMatch = String(lbl).match(/(\d{2})$/); // 抓取結尾兩碼如 -23
+          if (!yrMatch) {
+            yrMatch = String(lbl).match(/^(\d{4})/); // 或者抓開頭四碼如 2023
+          }
           const yr = yrMatch ? yrMatch[0] : 'Other';
           if (!yearGroups[yr]) yearGroups[yr] = [];
           yearGroups[yr].push(idx);
         });
+
         const yearKeys = Object.keys(yearGroups);
+        if (yearKeys.length <= 1) return;
+
         ctx.save();
-        yearKeys.forEach((yr, keyIdx) => {
-          if (keyIdx > 0) {
-            const prevLastIdx = yearGroups[yearKeys[keyIdx - 1]].slice(-1)[0];
-            const currFirstIdx = yearGroups[yr][0];
-            const prevLastX = x.getPixelForValue(prevLastIdx);
-            const currFirstX = x.getPixelForValue(currFirstIdx);
-            const separatorX = (prevLastX + currFirstX) / 2;
-            ctx.beginPath();
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.5;
-            ctx.moveTo(separatorX, top);
-            ctx.lineTo(separatorX, bottom);
-            ctx.stroke();
-          }
-        });
+        // 2. 在不同年份的交界處畫上垂直黑線
+        for (let i = 0; i < yearKeys.length - 1; i++) {
+          const currYearIndices = yearGroups[yearKeys[i]];
+          const nextYearIndices = yearGroups[yearKeys[i + 1]];
+          
+          const prevLastIdx = currYearIndices[currYearIndices.length - 1];
+          const currFirstIdx = nextYearIndices[0];
+
+          const prevLastX = x.getPixelForValue(prevLastIdx);
+          const currFirstX = x.getPixelForValue(currFirstIdx);
+          const separatorX = (prevLastX + currFirstX) / 2;
+
+          ctx.beginPath();
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5;
+          ctx.moveTo(separatorX, top);
+          ctx.lineTo(separatorX, bottom);
+          ctx.stroke();
+        }
         ctx.restore();
       }
     };
-
     function parseNum(val, isPercentageHint = false) {
       if (val === undefined || val === null || val === "-" || val === "") return 0;
       let str = String(val).trim();
