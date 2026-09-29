@@ -61,7 +61,6 @@
 
     .charts-section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
     .charts-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 40px; }
-    .charts-grid-2col { display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 24px; margin-bottom: 40px; }
     .chart-page { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .chart-title { font-size: 15px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; }
@@ -169,25 +168,6 @@
     ];
 
     const defaultColumns2 = [
-      { key: "month", title: "月份/時間" },
-      { key: "c1", title: "鎢鉬鉭刀具費" },
-      { key: "c2", title: "鎢鉬鉭刀具費/成本" },
-      { key: "c3", title: "鎢鉬鉭產品成本" },
-      { key: "c4", title: "石墨刀具費" },
-      { key: "c5", title: "石墨刀具費/成本" },
-      { key: "c6", title: "石墨產品成本" },
-      { key: "c7", title: "其他刀具費" },
-      { key: "c8", title: "其他刀具費/成本" },
-      { key: "c9", title: "其他產品成本" }
-    ];
-
-    const defaultColumns3 = [
-      { key: "month", title: "月份/時間" },
-      { key: "val_1", title: "項目一" },
-      { key: "val_2", title: "項目二" }
-    ];
-
-    const defaultColumns4 = [
       { key: "m_202601", title: "202601" },
       { key: "m_202602", title: "202602" },
       { key: "m_202603", title: "202603" },
@@ -200,40 +180,33 @@
       { key: "total", title: "總計" }
     ];
 
-    const defaultData4 = [
+    const defaultData2 = [
       { m_202601: "59,998,845", m_202602: "40,586,297", m_202603: "56,745,387", m_202604: "40,272,111", m_202605: "51,960,755", m_202606: "53,333,500", m_202607: "70,194,738", m_202608: "60,404,056", customer: "市場件", total: "433,495,689" },
       { m_202601: "47,521,142", m_202602: "43,528,129", m_202603: "61,439,850", m_202604: "52,870,713", m_202605: "53,907,642", m_202606: "46,702,936", m_202607: "71,721,752", m_202608: "54,713,401", customer: "Varian", total: "432,405,565" },
       { m_202601: "27,314,812", m_202602: "14,748,942", m_202603: "27,444,215", m_202604: "22,028,483", m_202605: "22,237,457", m_202606: "21,506,243", m_202607: "32,319,562", m_202608: "30,945,240", customer: "Applied", total: "198,544,954" },
-      { m_202601: "5,848,179", m_202602: "9,134,495", m_202603: "7,880,801", m_202604: "979,049", m_202605: "11,466,204", m_202606: "6,065,663", m_202607: "11,391,269", m_202608: "9,345,916", customer: "CS", total: "64,923,020" },
-      { m_202601: "4,282,265", m_202602: "2,521,749", m_202603: "6,905,717", m_202604: "3,936,601", m_202605: "6,883,600", m_202606: "4,838,257", m_202607: "13,492,273", m_202608: "6,583,415", customer: "SEN", total: "49,443,967" },
-      { m_202601: "4,278,106", m_202602: "3,283,019", m_202603: "3,286,536", m_202604: "6,482,403", m_202605: "3,160,527", m_202606: "5,548,258", m_202607: "7,797,439", m_202608: "8,649,582", customer: "HMI", total: "42,494,870" },
-      { m_202601: "3,319,327", m_202602: "4,622,993", m_202603: "3,532,799", m_202604: "3,910,604", m_202605: "5,085,243", m_202606: "3,965,133", m_202607: "6,796,389", m_202608: "5,560,295", customer: "AIBT", total: "36,801,783" },
-      { m_202601: "3,770,924", m_202602: "2,723,001", m_202603: "2,982,465", m_202604: "3,824,346", m_202605: "3,440,279", m_202606: "5,256,001", m_202607: "6,760,825", m_202608: "6,602,972", customer: "ASML", total: "35,361,413" },
-      { m_202601: "4,118,884", m_202602: "2,267,000", m_202603: "1,572,719", m_202604: "4,568,639", m_202605: "2,648,280", m_202606: "2,875,481", m_202607: "4,312,100", m_202608: "4,078,371", customer: "BHT", total: "26,441,474" }
+      { m_202601: "5,848,179", m_202602: "9,134,495", m_202603: "1,880,801", m_202604: "979,043", m_202605: "11,466,204", m_202606: "6,065,663", m_202607: "11,391,269", m_202608: "9,345,916", customer: "CS", total: "64,923,020" },
+      { m_202601: "4,282,265", m_202602: "2,521,749", m_202603: "6,905,717", m_202604: "3,936,601", m_202605: "6,883,690", m_202606: "4,838,257", m_202607: "13,492,273", m_202608: "6,583,415", customer: "SEN", total: "49,443,967" },
+      { m_202601: "4,278,106", m_202602: "3,283,019", m_202603: "3,286,536", m_202604: "6,482,403", m_202605: "3,169,527", m_202606: "5,548,258", m_202607: "7,797,439", m_202608: "8,649,582", customer: "HMI", total: "42,494,870" },
+      { m_202601: "3,319,327", m_202602: "4,622,993", m_202603: "3,532,799", m_202604: "3,910,604", m_202605: "5,085,243", m_202606: "3,965,133", m_202607: "6,796,389", m_202608: "5,569,295", customer: "AIBT", total: "36,801,783" },
+      { m_202601: "3,770,924", m_202602: "2,723,001", m_202603: "2,982,465", m_202604: "3,824,346", m_202605: "3,440,279", m_202606: "5,256,601", m_202607: "6,760,825", m_202608: "6,602,972", customer: "ASML", total: "35,361,413" },
+      { m_202601: "4,118,884", m_202602: "2,267,000", m_202603: "1,572,719", m_202604: "4,568,639", m_202605: "2,648,280", m_202606: "2,875,481", m_202607: "4,312,100", m_202608: "4,078,371", customer: "BHT", total: "26,441,474" },
+      { m_202601: "500,120", m_202602: "64,528", m_202603: "75,047", m_202604: "13224", m_202605: "543,994", m_202606: "44,502", m_202607: "97,628", m_202608: "521,446", customer: "CREATIVE", total: "1,860,489" },
+      { m_202601: "129,000", m_202602: "150,700", m_202603: "38,000", m_202604: "0", m_202605: "218,100", m_202606: "80,800", m_202607: "258,950", m_202608: "289,350", customer: "MIC", total: "1,164,900" },
+      { m_202601: "381,654", m_202602: "0", m_202603: "92,563", m_202604: "211703", m_202605: "142,968", m_202606: "0", m_202607: "0", m_202608: "58,550", customer: "Intel", total: "887,438" },
+      { m_202601: "0", m_202602: "16,817", m_202603: "29,885", m_202604: "28827", m_202605: "2,045", m_202606: "0", m_202607: "27,470", m_202608: "45,272", customer: "MicroTec", total: "150,316" }
     ];
 
     window.sheets = [
       { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] },
-      { id: "s2", name: "刀具費佔成本", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: [] },
-      { id: "s3", name: "植村占比", columns: JSON.parse(JSON.stringify(defaultColumns3)), data: [] },
-      { id: "s4", name: "各客戶累積產值", columns: JSON.parse(JSON.stringify(defaultColumns4)), data: JSON.parse(JSON.stringify(defaultData4)) }
+      { id: "s2", name: "各客戶累積產值", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: JSON.parse(JSON.stringify(defaultData2)) }
     ];
-    window.activeSheetId = "s4";
+    window.activeSheetId = "s1";
 
     window.sheet1ChartConfigs = [
       { id: "s1_chart_1", title: "📈 合計產出市值(NT$) / 產出數量(PCS) 趨勢圖", type: "combo" },
       { id: "s1_chart_2", title: "📊 報廢/產值 分析圖", type: "line", dataKey: "報廢/產值" },
       { id: "s1_chart_3", title: "📊 刀具費/產值 分析圖", type: "line", dataKey: "刀具費/產值" },
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
-    ];
-
-    window.sheet2ChartConfigs = [
-      { id: "s2_chart_1", title: "鎢鉬鉭刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "鎢鉬鉭刀具費", lineKey: "鎢鉬鉭刀具費/成本" },
-      { id: "s2_chart_2", title: "鎢鉬鉭刀具費與成本趨勢圖", type: "double_line", line1Key: "鎢鉬鉭刀具費", line2Key: "鎢鉬鉭產品成本" },
-      { id: "s2_chart_3", title: "石墨刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "石墨刀具費", lineKey: "石墨刀具費/成本" },
-      { id: "s2_chart_4", title: "石墨刀具費與成本趨勢圖", type: "double_line", line1Key: "石墨刀具費", line2Key: "石墨產品成本" },
-      { id: "s2_chart_5", title: "其他刀具費金額與佔比趨勢圖", type: "combo_bar_line", barKey: "其他刀具費", lineKey: "其他刀具費/成本" },
-      { id: "s2_chart_6", title: "其他刀具費與成本趨勢圖", type: "double_line", line1Key: "其他刀具費", line2Key: "其他產品成本" }
     ];
 
     onAuthStateChanged(auth, (user) => {
@@ -535,10 +508,7 @@
       }
 
       const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
-const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "刀具費佔成本");
-// 修正第三個工作頁的判斷條件，讓名稱「複材占比」也能對應圖表
-const isThirdSheet = (currentSheet.id === "s3" || currentSheet.name === "複材占比" || currentSheet.name === "植村占比");
-const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客戶累積產值");
+      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "各客戶累積產值");
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `<div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 分析圖表</div><div class="charts-grid">`;
@@ -546,7 +516,7 @@ const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客
           html += `
             <div class="chart-page" id="export-area-${cp.id}">
               <div class="chart-header">
-                <div class="chart-title"><i class="fa-solid fa-chart-area" style="color:#7e22ce;"></i> ${cp.title}</div>
+                <div class="chart-title">${cp.title}</div>
                 <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
               </div>
               <div class="chart-wrapper"><canvas id="canvas-${cp.id}"></canvas></div>
@@ -555,28 +525,14 @@ const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客
         });
         html += `</div>`;
       } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
-        html += `<div class="charts-section-title"><i class="fa-solid fa-chart-pie"></i> 刀具費與成本趨勢分析</div><div class="charts-grid-2col">`;
-        window.sheet2ChartConfigs.forEach(cp => {
-          html += `
-            <div class="chart-page" id="export-area-${cp.id}">
-              <div class="chart-header">
-                <div class="chart-title"><i class="fa-solid fa-chart-column" style="color:#0284c7;"></i> ${cp.title}</div>
-                <button class="btn btn-success" onclick="exportChartToPNG('${cp.id}', '${cp.title}')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
-              </div>
-              <div class="chart-wrapper"><canvas id="canvas-${cp.id}"></canvas></div>
-            </div>
-          `;
-        });
-        html += `</div>`;
-      } else if (isFourthSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `
-          <div class="charts-section-title"><i class="fa-solid fa-chart-pie"></i> 2026 各客戶累積產值佔比 (Treemap)</div>
-          <div class="chart-page" id="export-area-s4_treemap" style="max-width: 100%; margin-bottom: 30px;">
+          <div class="charts-section-title"><i class="fa-solid fa-chart-pie"></i> 各客戶累積產值佔比 (Treemap)</div>
+          <div class="chart-page" id="export-area-s2_treemap" style="max-width: 100%; margin-bottom: 30px;">
             <div class="chart-header">
-              <div class="chart-title"><i class="fa-solid fa-border-all" style="color:#2563eb;"></i> 2026 各客戶累積產值</div>
-              <button class="btn btn-success" onclick="exportChartToPNG('s4_treemap', '2026 各客戶累積產值佔比')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
+              <div class="chart-title"><i class="fa-solid fa-border-all" style="color:#2563eb;"></i> 各客戶累積產值佔比分析</div>
+              <button class="btn btn-success" onclick="exportChartToPNG('s2_treemap', '各客戶累積產值佔比')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
             </div>
-            <div id="treemap-container" style="width: 100%; height: 480px; background: #1e293b; border-radius: 8px; padding: 12px; display: flex; flex-wrap: wrap; position: relative; gap: 4px; overflow: hidden;"></div>
+            <div id="treemap-container" style="width: 100%; height: 620px; background: #1e293b; border-radius: 8px; padding: 12px; display: flex; flex-wrap: wrap; position: relative; gap: 4px; overflow: hidden;"></div>
           </div>
         `;
       }
@@ -586,51 +542,40 @@ const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => { window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet)); }, 100);
       } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
-        setTimeout(() => { window.sheet2ChartConfigs.forEach(cp => buildChartSheet2(cp, currentSheet)); }, 100);
-      } else if (isFourthSheet && currentSheet.data && currentSheet.data.length > 0) {
         setTimeout(() => { renderTreemap(currentSheet); }, 100);
       }
     };
 
-function renderTreemap(sheet) {
+    function renderTreemap(sheet) {
       const container = document.getElementById('treemap-container');
-      if (!container) {
-        console.error('找不到 treemap-container 容器');
-        return;
-      }
+      if (!container) return;
 
-      // 內建數字解析防呆，避免外部 parseNum 缺失導致報錯
       function parseNum(val) {
         if (typeof val === 'number') return val;
         if (!val) return 0;
         return parseFloat(String(val).replace(/,/g, '')) || 0;
       }
 
-      // 檢查資料是否存在
       if (!sheet || !sheet.data) {
-        container.innerHTML = '<div style="color: white; padding: 20px; font-family: sans-serif;">目前沒有資料可供顯示</div>';
+        container.innerHTML = '<div style="color: white; padding: 20px;">目前沒有資料可供顯示</div>';
         return;
       }
 
-      // 1. 抓取所有客戶與對應的總計數值（相容中英文字段）
       let items = sheet.data.map(row => {
         const cust = row.customer || row.客戶 || row.item || row.項目 || '未知';
         const totalVal = parseNum(row.total || row.總計 || 0);
         return { customer: cust, value: totalVal };
       }).filter(item => item.customer !== '總計' && item.value > 0);
 
-      // 2. 依照數值由大到小排序
       items.sort((a, b) => b.value - a.value);
       const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
 
-      // 3. 高質感配色清單
       const colors = ['#2563eb', '#dc2626', '#84cc16', '#8b5cf6', '#0ea5e9', '#f97316', '#334155', '#475569', '#059669', '#d97706', '#64748b', '#0284c7'];
 
       let html = '';
       items.forEach((item, idx) => {
         const percentage = grandTotal > 0 ? ((item.value / grandTotal) * 100).toFixed(2) + '%' : '0%';
         const bg = colors[idx % colors.length];
-        
         const ratio = grandTotal > 0 ? (item.value / grandTotal) * 100 : 0;
         let flexVal = Math.max(Math.round(ratio * 3), 10);
         let minWidth = ratio > 25 ? '32%' : (ratio > 10 ? '20%' : '14%');
@@ -643,11 +588,11 @@ function renderTreemap(sheet) {
         `;
       });
       
-      // 強制設定容器樣式，避免被外部 CSS 覆蓋而隱藏
       container.style.cssText = 'height: 620px !important; display: flex !important; flex-wrap: wrap !important; gap: 6px !important; padding: 12px !important; background: #0f172a !important; box-sizing: border-box !important;';
       container.innerHTML = html;
     }
-const yearSeparatorPlugin = {
+
+    const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
@@ -655,9 +600,9 @@ const yearSeparatorPlugin = {
         
         const yearGroups = {};
         labels.forEach((lbl, idx) => {
-          let yrMatch = String(lbl).match(/(\d{2})$/); // 抓取結尾兩碼如 -23
+          let yrMatch = String(lbl).match(/(\d{2})$/);
           if (!yrMatch) {
-            yrMatch = String(lbl).match(/^(\d{4})/); // 或抓開頭四碼
+            yrMatch = String(lbl).match(/^(\d{4})/);
           }
           const yr = yrMatch ? yrMatch[0] : 'Other';
           if (!yearGroups[yr]) yearGroups[yr] = [];
@@ -689,6 +634,7 @@ const yearSeparatorPlugin = {
         ctx.restore();
       }
     };
+
     function parseNum(val, isPercentageHint = false) {
       if (val === undefined || val === null || val === "-" || val === "") return 0;
       let str = String(val).trim();
@@ -701,29 +647,16 @@ const yearSeparatorPlugin = {
       return num;
     }
 
-    function getColumnKeyByTitle(sheet, targetTitle) {
-      if (!sheet || !sheet.columns) return null;
-      let found = sheet.columns.find(c => c.key === targetTitle || c.title.trim() === targetTitle.trim());
-      if (found) return found.key;
-      const normalize = (str) => String(str).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "").toLowerCase();
-      const cleanTarget = normalize(targetTitle);
-      found = sheet.columns.find(c => normalize(c.title).includes(cleanTarget) || cleanTarget.includes(normalize(c.title)));
-      return found ? found.key : null;
-    }
-
-function buildChartSheet1(config, sheet) {
+    function buildChartSheet1(config, sheet) {
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
       if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
 
-      // 1. 取得所有月份的 Key (排除項目名稱欄位)
       const firstRow = sheet.data[0] || {};
       const monthKeys = Object.keys(firstRow).filter(k => k !== 'item' && k !== '項目');
 
-      // 2. 定義一個解析月份字串（如 Jan-23 或 2023-01）轉成可排序時間的時間戳記函式
       const parseDateVal = (keyOrTitle) => {
         const str = String(keyOrTitle).trim();
-        // 嘗試對應類似 Jan-23 的格式
         const matchJan = str.match(/([A-Za-z]{3})-(\d{2})/);
         if (matchJan) {
           const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
@@ -731,7 +664,6 @@ function buildChartSheet1(config, sheet) {
           const y = 2000 + parseInt(matchJan[2], 10);
           return new Date(y, m, 1).getTime();
         }
-        // 嘗試對應 2023-01 或類似格式
         const matchStandard = str.match(/(\d{4})[/-](\d{1,2})/);
         if (matchStandard) {
           return new Date(parseInt(matchStandard[1], 10), parseInt(matchStandard[2], 10) - 1, 1).getTime();
@@ -739,7 +671,6 @@ function buildChartSheet1(config, sheet) {
         return new Date(str).getTime() || 0;
       };
 
-      // 3. 將月份按照時間「由舊到新」排序，確保跨年黑線能正確畫在交界處
       const sortedMonthKeys = [...monthKeys].sort((a, b) => parseDateVal(a) - parseDateVal(b));
 
       const labels = sortedMonthKeys.map(k => {
@@ -747,7 +678,6 @@ function buildChartSheet1(config, sheet) {
         return colDef ? colDef.title : k;
       });
 
-      // 4. 根據列的「項目」名稱抓取排序後的對應數值
       const getRowDataByItemName = (itemName, isPercentage = false) => {
         const targetRow = sheet.data.find(r => {
           const name = r.item || r.項目 || '';
@@ -800,93 +730,30 @@ function buildChartSheet1(config, sheet) {
       }
     }
 
-    function buildChartSheet2(config, sheet) {
-      const canvas = document.getElementById(`canvas-${config.id}`);
-      if (!canvas) return;
-      if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
-      const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-      const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
+    window.exportChartToPNG = function(chartId, title) {
+      const element = document.getElementById(`export-area-${chartId}`);
+      if (!element) return;
+      
+      const buttons = element.querySelectorAll('button, .export-btn');
+      buttons.forEach(b => b.style.display = 'none');
 
-      if (config.type === "combo_bar_line") {
-        const barKey = getColumnKeyByTitle(sheet, config.barKey);
-        const lineKey = getColumnKeyByTitle(sheet, config.lineKey);
-        const barData = sheet.data.map(r => parseNum(r[barKey]));
-        const lineData = sheet.data.map(r => parseNum(r[lineKey], true));
+      html2canvas(element, { 
+        scale: 3, 
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      }).then(canvas => {
+        buttons.forEach(b => b.style.display = '');
 
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              { type: 'bar', label: config.barKey, data: barData, backgroundColor: 'rgba(2, 132, 199, 0.75)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
-              { type: 'line', label: config.lineKey, data: lineData, borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
-            ]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額 (NT$)' } },
-              y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: function(v) { return v + '%'; } }, title: { display: true, text: '佔比 (%)' } }
-            }
-          }
-        });
-      } else if (config.type === "double_line") {
-        const line1Key = getColumnKeyByTitle(sheet, config.line1Key);
-        const line2Key = getColumnKeyByTitle(sheet, config.line2Key);
-        const data1 = sheet.data.map(r => parseNum(r[line1Key]));
-        const data2 = sheet.data.map(r => parseNum(r[line2Key]));
-
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              { label: config.line1Key, data: data1, borderColor: '#06b6d4', backgroundColor: '#06b6d4', borderWidth: 2, tension: 0.2, pointRadius: 4 },
-              { label: config.line2Key, data: data2, borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2, tension: 0.2, pointRadius: 4 }
-            ]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { type: 'linear', display: true, title: { display: true, text: '金額 (NT$)' } }
-            }
-          }
-        });
-      }
-    }
-
-window.exportChartToPNG = function(chartId, title) {
-  const element = document.getElementById(`export-area-${chartId}`);
-  if (!element) return;
-  
-  // 1. 同時透過 class、按鈕標籤以及包含「匯出」字樣的按鈕來全面隱藏它
-  const buttons = element.querySelectorAll('button, .export-btn');
-  buttons.forEach(b => b.style.display = 'none');
-
-  // 2. 開始進行 canvas 截圖
-  html2canvas(element, { 
-    scale: 3, 
-    useCORS: true,
-    backgroundColor: '#ffffff'
-  }).then(canvas => {
-    // 3. 截圖完成後，把按鈕恢復顯示
-    buttons.forEach(b => b.style.display = '');
-
-    // 4. 觸發下載
-    const link = document.createElement('a');
-    link.download = `${title}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
-    link.click();
-  }).catch((err) => {
-    buttons.forEach(b => b.style.display = '');
-    console.error("匯出圖片失敗：", err);
-    alert("匯出圖片失敗！");
-  });
-};
+        const link = document.createElement('a');
+        link.download = `${title}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+      }).catch((err) => {
+        buttons.forEach(b => b.style.display = '');
+        console.error("匯出圖片失敗：", err);
+        alert("匯出圖片失敗！");
+      });
+    };
   </script>
 </body>
 </html>
