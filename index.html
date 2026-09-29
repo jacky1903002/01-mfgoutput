@@ -682,14 +682,29 @@ function renderTreemap(sheet) {
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
       if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
-      const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-      const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
+
+      // 1. 取得橫向的所有月份標題（排除第一欄的「項目」名稱）
+      const firstRow = sheet.data[0] || {};
+      const monthKeys = Object.keys(firstRow).filter(k => k !== 'item' && k !== '項目');
+      const labels = monthKeys.map(k => {
+        // 如果第一欄是用 key 當欄位，去 columns 找對應的 title，或者直接用 key
+        const colDef = sheet.columns.find(c => c.key === k);
+        return colDef ? colDef.title : k;
+      });
+
+      // 2. 根據列的「項目」名稱抓取該列的所有月份數據
+      const getRowDataByItemName = (itemName, isPercentage = false) => {
+        const targetRow = sheet.data.find(r => {
+          const name = r.item || r.項目 || '';
+          return name.includes(itemName);
+        });
+        if (!targetRow) return monthKeys.map(() => 0);
+        return monthKeys.map(k => parseNum(targetRow[k], isPercentage));
+      };
 
       if (config.type === "combo") {
-        const valKey = getColumnKeyByTitle(sheet, "合計產出市值");
-        const qtyKey = getColumnKeyByTitle(sheet, "合計產出數量");
-        const valData = sheet.data.map(r => parseNum(r[valKey]));
-        const qtyData = sheet.data.map(r => parseNum(r[qtyKey]));
+        const valData = getRowDataByItemName("合計產出市值");
+        const qtyData = getRowDataByItemName("合計產出數量");
 
         window.chartInstances[config.id] = new Chart(canvas, {
           type: 'bar',
@@ -711,8 +726,7 @@ function renderTreemap(sheet) {
           }
         });
       } else if (config.type === "line") {
-        const dataKey = getColumnKeyByTitle(sheet, config.dataKey);
-        const lineData = sheet.data.map(r => parseNum(r[dataKey], true));
+        const lineData = getRowDataByItemName(config.dataKey, true);
         window.chartInstances[config.id] = new Chart(canvas, {
           type: 'line',
           data: {
