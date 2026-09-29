@@ -507,8 +507,10 @@
         html += `</tbody></table></div>`;
       }
 
-      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name === "產能量能分析");
-      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name === "各客戶累積產值");
+      // 改進判斷條件：透過檢查欄位標題是否包含「客戶」或「總計」來自動判斷是否為客戶產值表
+      const hasCustomerCol = sheetColumns.some(c => c.title.includes('客戶') || c.title.includes('總計'));
+      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
+      const isSecondSheet = (!isFirstSheet && hasCustomerCol);
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `<div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 分析圖表</div><div class="charts-grid">`;
@@ -562,8 +564,21 @@
       }
 
       let items = sheet.data.map(row => {
-        const cust = row.customer || row.客戶 || row.item || row.項目 || '未知';
-        const totalVal = parseNum(row.total || row.總計 || 0);
+        // 自動尋找對應的欄位 Key
+        let custKey = Object.keys(row).find(k => {
+          const colDef = sheet.columns.find(c => c.key === k);
+          const title = colDef ? colDef.title : k;
+          return title.includes('客戶');
+        }) || 'customer';
+
+        let totalKey = Object.keys(row).find(k => {
+          const colDef = sheet.columns.find(c => c.key === k);
+          const title = colDef ? colDef.title : k;
+          return title.includes('總計');
+        }) || 'total';
+
+        const cust = row[custKey] || '未知';
+        const totalVal = parseNum(row[totalKey] || 0);
         return { customer: cust, value: totalVal };
       }).filter(item => item.customer !== '總計' && item.value > 0);
 
