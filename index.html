@@ -781,78 +781,53 @@ function buildChartSheet1(config, sheet) {
       if (!canvas) return;
       if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
 
-      // 1. 從表格中萃取每一列的「客戶名稱」與「總計」數值
-      const treemapData = sheet.data.map(row => {
-        const clientName = row.客戶 || row.client || row.item || row.項目 || '其他';
-        // 抓取最後一欄或叫做「總計」的數值作為面積依據
-        const totalVal = parseNum(row.總計 || row.total || Object.values(row)[Object.values(row).length - 1]);
-        return {
-          client: clientName,
-          value: totalVal > 0 ? totalVal : 1
-        };
-      }).filter(item => item.client !== '總計' && item.client !== 'total');
+      // 1. 找出所有代表月份的直行 Key（排除「客戶」與「總計」等非月份欄位）
+      const firstRow = sheet.data[0] || {};
+      const monthKeys = Object.keys(firstRow).filter(k => {
+        return k !== '客戶' && k !== 'client' && k !== '總計' && k !== 'total' && k !== 'item' && k !== '項目';
+      });
 
-      // 2. 計算總合以算出百分比，供顯示標籤使用
-      const grandTotal = treemapData.reduce((sum, item) => sum + item.value, 0);
+      // 2. 依照時間順序（如 202601, 202602...）對月份欄位進行排序
+      const sortedMonthKeys = [...monthKeys].sort((a, b) => String(a).localeCompare(String(b)));
+      
+      const labels = sortedMonthKeys.map(k => {
+        const colDef = sheet.columns.find(c => c.key === k);
+        return colDef ? colDef.title : k;
+      });
 
-      // 3. 建立 Treemap 圖表
+      // 3. 根據「客戶」名稱去該列抓取各排序後月份的數值
+      const getRowDataByClientName = (clientName, isPercentage = false) => {
+        const targetRow = sheet.data.find(r => {
+          const name = r.客戶 || r.client || r.item || r.項目 || '';
+          return String(name).includes(clientName);
+        });
+        if (!targetRow) return sortedMonthKeys.map(() => 0);
+        return sortedMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
+      };
+
+      // 4. 根據 config 設定或預設抓取對應的長條圖/折線圖資料
+      const barKey = config.barKey || "市場件";
+      const lineKey = config.lineKey || "Varian";
+      
+      const barData = getRowDataByClientName(barKey);
+      const lineData = getRowDataByClientName(lineKey, true);
+
       window.chartInstances[config.id] = new Chart(canvas, {
-        type: 'treemap',
+        type: 'bar',
         data: {
-          datasets: [{
-            tree: treemapData,
-            key: 'value',
-            groups: ['client'],
-            // 設定各區塊顏色
-            backgroundColor: function(ctx) {
-              if (!ctx.raw) return '#ccc';
-              // 依序給予不同區塊好看的色彩
-              const colors = ['#3b82f6', '#ef4444', '#84cc16', '#8b5cf6', '#f97316', '#06b6d4', '#eab308', '#ec4899', '#10b981', '#6366f1', '#14b8a6', '#f43f5e'];
-              return colors[ctx.dataIndex % colors.length];
-            },
-            borderColor: '#ffffff',
-            borderWidth: 2,
-            spacing: 1,
-            // 自訂方塊內顯示的文字（客戶名稱與百分比）
-            labels: {
-              display: true,
-              formatter: function(ctx) {
-                if (!ctx.raw) return '';
-                const val = ctx.raw.v || 0;
-                const percentage = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(2) + '%' : '';
-                const name = ctx.raw.g || '';
-                return [name, percentage];
-              },
-              color: '#ffffff',
-              font: {
-                weight: 'bold',
-                size: 14
-              }
-            }
-          }]
+          labels: labels,
+          datasets: [
+            { type: 'bar', label: barKey, data: barData, backgroundColor: 'rgba(2, 132, 199, 0.75)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
+            { type: 'line', label: lineKey, data: lineData, borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
+          ]
         },
+        plugins: [yearSeparatorPlugin],
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            title: {
-              display: true,
-              text: '2026各客戶累積產值',
-              font: { size: 16 }
-            },
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: function(items) {
-                  return items[0].raw.g;
-                },
-                label: function(item) {
-                  const val = item.raw.v;
-                  const percentage = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(2) + '%' : '';
-                  return `產值: ${val.toLocaleString()} (${percentage})`;
-                }
-              }
-            }
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { display: false } },
+            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額 (NT$)' } },
+            y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: function(v) { return v + '%'; } }, title: { display: true, text: '佔比 (%)' } }
           }
         }
       });
