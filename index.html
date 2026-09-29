@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
@@ -331,6 +330,7 @@
       window.renderMainContent();
     });
 
+// 智慧型 Excel 匯入：自動對應標準 Key，避免圖表失效
     document.getElementById('upload-excel').addEventListener('change', function(e) {
       if (!window.currentUser) return alert('請先登入管理員帳號後再進行匯入！');
       const file = e.target.files[0];
@@ -343,19 +343,52 @@
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
           const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
           if (rawJson.length === 0) return alert('Excel 檔案無資料！');
-          const parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h.trim() }));
+
           const targetIndex = window.sheets.findIndex(s => s.id === window.activeSheetId);
           if (targetIndex !== -1) {
-            window.sheets[targetIndex].columns = parsedColumns;
-            window.sheets[targetIndex].data = rawJson;
+            const curSheet = window.sheets[targetIndex];
+            
+            // 如果是第一個工作表，嘗試自動智慧對應標準欄位 Key，以維持圖表正常運作
+            if (curSheet.id === "s1") {
+              const standardKeys = defaultColumns1.map(c => c.key);
+              rawJson.forEach(row => {
+                const keys = Object.keys(row);
+                keys.forEach((k, idx) => {
+                  if (idx < standardKeys.length && k !== standardKeys[idx]) {
+                    row[standardKeys[idx]] = row[k];
+                    delete row[k];
+                  }
+                });
+              });
+              curSheet.columns = JSON.parse(JSON.stringify(defaultColumns1));
+            } else {
+              const parsedColumns = Object.keys(rawJson[0]).map((h, i) => ({ key: i === 0 ? 'month' : `col_${i}`, title: h.trim() }));
+              curSheet.columns = parsedColumns;
+              rawJson.forEach(row => {
+                const keys = Object.keys(row);
+                keys.forEach((k, i) => {
+                  const newKey = parsedColumns[i] ? parsedColumns[i].key : `col_${i}`;
+                  if (k !== newKey) {
+                    row[newKey] = row[k];
+                    delete row[k];
+                  }
+                });
+              });
+            }
+
+            curSheet.data = rawJson;
             window.saveToFirebase();
             window.renderMainContent();
+            alert('Excel 匯入並自動對應成功！');
           }
         } catch (err) {
+          console.error(err);
           alert('解析 Excel 失敗！');
         }
         e.target.value = '';
       };
+      reader.readAsArrayBuffer(file);
+    });
       reader.readAsArrayBuffer(file);
     });
 
