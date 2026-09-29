@@ -629,13 +629,11 @@ const yearSeparatorPlugin = {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
         const labels = chart.data.labels || [];
         
-        // 1. 找出每一個年份轉折點的索引
         const yearGroups = {};
         labels.forEach((lbl, idx) => {
-          // 支援 "Jan-23" 或 "2023-01" 這種格式抓取年份
           let yrMatch = String(lbl).match(/(\d{2})$/); // 抓取結尾兩碼如 -23
           if (!yrMatch) {
-            yrMatch = String(lbl).match(/^(\d{4})/); // 或者抓開頭四碼如 2023
+            yrMatch = String(lbl).match(/^(\d{4})/); // 或抓開頭四碼
           }
           const yr = yrMatch ? yrMatch[0] : 'Other';
           if (!yearGroups[yr]) yearGroups[yr] = [];
@@ -646,7 +644,6 @@ const yearSeparatorPlugin = {
         if (yearKeys.length <= 1) return;
 
         ctx.save();
-        // 2. 在不同年份的交界處畫上垂直黑線
         for (let i = 0; i < yearKeys.length - 1; i++) {
           const currYearIndices = yearGroups[yearKeys[i]];
           const nextYearIndices = yearGroups[yearKeys[i + 1]];
@@ -690,28 +687,50 @@ const yearSeparatorPlugin = {
       return found ? found.key : null;
     }
 
-    function buildChartSheet1(config, sheet) {
+function buildChartSheet1(config, sheet) {
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
       if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
 
-      // 1. 取得橫向的所有月份標題（排除第一欄的「項目」名稱）
+      // 1. 取得所有月份的 Key (排除項目名稱欄位)
       const firstRow = sheet.data[0] || {};
       const monthKeys = Object.keys(firstRow).filter(k => k !== 'item' && k !== '項目');
-      const labels = monthKeys.map(k => {
-        // 如果第一欄是用 key 當欄位，去 columns 找對應的 title，或者直接用 key
+
+      // 2. 定義一個解析月份字串（如 Jan-23 或 2023-01）轉成可排序時間的時間戳記函式
+      const parseDateVal = (keyOrTitle) => {
+        const str = String(keyOrTitle).trim();
+        // 嘗試對應類似 Jan-23 的格式
+        const matchJan = str.match(/([A-Za-z]{3})-(\d{2})/);
+        if (matchJan) {
+          const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
+          const m = months[matchJan[1]] || 0;
+          const y = 2000 + parseInt(matchJan[2], 10);
+          return new Date(y, m, 1).getTime();
+        }
+        // 嘗試對應 2023-01 或類似格式
+        const matchStandard = str.match(/(\d{4})[/-](\d{1,2})/);
+        if (matchStandard) {
+          return new Date(parseInt(matchStandard[1], 10), parseInt(matchStandard[2], 10) - 1, 1).getTime();
+        }
+        return new Date(str).getTime() || 0;
+      };
+
+      // 3. 將月份按照時間「由舊到新」排序，確保跨年黑線能正確畫在交界處
+      const sortedMonthKeys = [...monthKeys].sort((a, b) => parseDateVal(a) - parseDateVal(b));
+
+      const labels = sortedMonthKeys.map(k => {
         const colDef = sheet.columns.find(c => c.key === k);
         return colDef ? colDef.title : k;
       });
 
-      // 2. 根據列的「項目」名稱抓取該列的所有月份數據
+      // 4. 根據列的「項目」名稱抓取排序後的對應數值
       const getRowDataByItemName = (itemName, isPercentage = false) => {
         const targetRow = sheet.data.find(r => {
           const name = r.item || r.項目 || '';
           return name.includes(itemName);
         });
-        if (!targetRow) return monthKeys.map(() => 0);
-        return monthKeys.map(k => parseNum(targetRow[k], isPercentage));
+        if (!targetRow) return sortedMonthKeys.map(() => 0);
+        return sortedMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
       };
 
       if (config.type === "combo") {
