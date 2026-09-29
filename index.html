@@ -780,34 +780,58 @@ function buildChartSheet1(config, sheet) {
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
       if (window.chartInstances[config.id]) window.chartInstances[config.id].destroy();
-      const monthColKey = getColumnKeyByTitle(sheet, "月份") || getColumnKeyByTitle(sheet, "時間") || "month";
-      const labels = sheet.data.map(r => r[monthColKey] || r.month || '');
 
-      if (config.type === "combo_bar_line") {
-        const barKey = getColumnKeyByTitle(sheet, config.barKey);
-        const lineKey = getColumnKeyByTitle(sheet, config.lineKey);
-        const barData = sheet.data.map(r => parseNum(r[barKey]));
-        const lineData = sheet.data.map(r => parseNum(r[lineKey], true));
+      // 1. 找出所有代表月份的直行 Key（排除「客戶」與「總計」等非月份欄位）
+      const firstRow = sheet.data[0] || {};
+      const monthKeys = Object.keys(firstRow).filter(k => {
+        return k !== '客戶' && k !== 'client' && k !== '總計' && k !== 'total' && k !== 'item' && k !== '項目';
+      });
 
-        window.chartInstances[config.id] = new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              { type: 'bar', label: config.barKey, data: barData, backgroundColor: 'rgba(2, 132, 199, 0.75)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
-              { type: 'line', label: config.lineKey, data: lineData, borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
-            ]
-          },
-          plugins: [yearSeparatorPlugin],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-              x: { grid: { display: false } },
-              y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額 (NT$)' } },
-              y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: function(v) { return v + '%'; } }, title: { display: true, text: '佔比 (%)' } }
-            }
-          }
+      // 2. 依照時間順序（如 202601, 202602...）對月份欄位進行排序
+      const sortedMonthKeys = [...monthKeys].sort((a, b) => String(a).localeCompare(String(b)));
+      
+      const labels = sortedMonthKeys.map(k => {
+        const colDef = sheet.columns.find(c => c.key === k);
+        return colDef ? colDef.title : k;
+      });
+
+      // 3. 根據「客戶」名稱去該列抓取各排序後月份的數值
+      const getRowDataByClientName = (clientName, isPercentage = false) => {
+        const targetRow = sheet.data.find(r => {
+          const name = r.客戶 || r.client || r.item || r.項目 || '';
+          return String(name).includes(clientName);
         });
+        if (!targetRow) return sortedMonthKeys.map(() => 0);
+        return sortedMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
+      };
+
+      // 4. 根據 config 設定或預設抓取對應的長條圖/折線圖資料
+      const barKey = config.barKey || "市場件";
+      const lineKey = config.lineKey || "Varian";
+      
+      const barData = getRowDataByClientName(barKey);
+      const lineData = getRowDataByClientName(lineKey, true);
+
+      window.chartInstances[config.id] = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { type: 'bar', label: barKey, data: barData, backgroundColor: 'rgba(2, 132, 199, 0.75)', borderColor: '#0284c7', borderWidth: 1, yAxisID: 'y' },
+            { type: 'line', label: lineKey, data: lineData, borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
+          ]
+        },
+        plugins: [yearSeparatorPlugin],
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { display: false } },
+            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額 (NT$)' } },
+            y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: function(v) { return v + '%'; } }, title: { display: true, text: '佔比 (%)' } }
+          }
+        }
+      });
+    }
       } else if (config.type === "double_line") {
         const line1Key = getColumnKeyByTitle(sheet, config.line1Key);
         const line2Key = getColumnKeyByTitle(sheet, config.line2Key);
