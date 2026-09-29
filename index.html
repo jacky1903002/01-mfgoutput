@@ -594,20 +594,36 @@ const isFourthSheet = (currentSheet.id === "s4" || currentSheet.name === "各客
 
 function renderTreemap(sheet) {
       const container = document.getElementById('treemap-container');
-      if (!container) return;
+      if (!container) {
+        console.error('找不到 treemap-container 容器');
+        return;
+      }
 
-      // 1. 抓取所有客戶與對應的總計數值
+      // 內建數字解析防呆，避免外部 parseNum 缺失導致報錯
+      function parseNum(val) {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        return parseFloat(String(val).replace(/,/g, '')) || 0;
+      }
+
+      // 檢查資料是否存在
+      if (!sheet || !sheet.data) {
+        container.innerHTML = '<div style="color: white; padding: 20px; font-family: sans-serif;">目前沒有資料可供顯示</div>';
+        return;
+      }
+
+      // 1. 抓取所有客戶與對應的總計數值（相容中英文字段）
       let items = sheet.data.map(row => {
         const cust = row.customer || row.客戶 || row.item || row.項目 || '未知';
         const totalVal = parseNum(row.total || row.總計 || 0);
         return { customer: cust, value: totalVal };
       }).filter(item => item.customer !== '總計' && item.value > 0);
 
-      // 2. 依照數值由大到小排序（讓最大的排在前面）
+      // 2. 依照數值由大到小排序
       items.sort((a, b) => b.value - a.value);
       const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
 
-      // 3. 高質感配色清單（對應市場件、Varian、Applied 等）
+      // 3. 高質感配色清單
       const colors = ['#2563eb', '#dc2626', '#84cc16', '#8b5cf6', '#0ea5e9', '#f97316', '#334155', '#475569', '#059669', '#d97706', '#64748b', '#0284c7'];
 
       let html = '';
@@ -615,7 +631,6 @@ function renderTreemap(sheet) {
         const percentage = grandTotal > 0 ? ((item.value / grandTotal) * 100).toFixed(2) + '%' : '0%';
         const bg = colors[idx % colors.length];
         
-        // 根據數值比例計算彈性佔寬，確保大項目（如市場件、Varian）佔據主要視覺
         const ratio = grandTotal > 0 ? (item.value / grandTotal) * 100 : 0;
         let flexVal = Math.max(Math.round(ratio * 3), 10);
         let minWidth = ratio > 25 ? '32%' : (ratio > 10 ? '20%' : '14%');
@@ -628,16 +643,10 @@ function renderTreemap(sheet) {
         `;
       });
       
-      // 設定容器高度與彈性排版
-      container.style.height = '620px';
-      container.style.display = 'flex';
-      container.style.flexWrap = 'wrap';
-      container.style.gap = '6px';
-      container.style.padding = '12px';
-      container.style.background = '#0f172a';
+      // 強制設定容器樣式，避免被外部 CSS 覆蓋而隱藏
+      container.style.cssText = 'height: 620px !important; display: flex !important; flex-wrap: wrap !important; gap: 6px !important; padding: 12px !important; background: #0f172a !important; box-sizing: border-box !important;';
       container.innerHTML = html;
     }
-
 const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
