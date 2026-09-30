@@ -14,10 +14,43 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <style>
+    :root {
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-muted: #64748b;
+      --success-text: #059669;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f8fafc; color: #334155; display: flex; flex-direction: column; min-height: 100vh; }
     
-    header { background-color: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    /* === 畫面最上方更新時間列 === */
+    .update-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+    }
+    .update-banner span {
+      color: var(--success-text);
+      font-weight: 600;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
     .header-left { display: flex; align-items: center; gap: 16px; }
     .logo-box { width: 40px; height: 40px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #2563eb; font-size: 20px; cursor: pointer; overflow: hidden; border: 1px dashed #bfdbfe; }
     .logo-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -79,42 +112,43 @@
 </head>
 <body>
 
-  <header>
-    <div class="header-left">
-      <div class="logo-box" id="logo-box" title="點擊更換 Logo 圖片" onclick="changeLogoUrl()">
-        <i class="fa-solid fa-chart-line" id="logo-icon"></i>
+  <main>
+    <!-- 畫面最上方更新時間列 -->
+    <div class="update-banner">
+      <i class="fa-regular fa-clock"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span>
+    </div>
+
+    <header>
+      <div class="header-left">
+        <div class="logo-box" id="logo-box" title="點擊更換 Logo 圖片" onclick="changeLogoUrl()">
+          <i class="fa-solid fa-chart-line" id="logo-icon"></i>
+        </div>
+        <h1>產能量能分析&各客戶累積產值</h1>
       </div>
-      <h1>產能量能分析&各客戶累積產值</h1>
+      <div class="header-right">
+        <span class="user-info" id="user-name">管理者: <strong id="user-email-text"></strong></span>
+        <label class="btn btn-light disabled" id="btn-import-excel" style="cursor: pointer;">
+          <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> 匯入 Excel 至當前工作表
+          <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
+        </label>
+        <button class="btn btn-light" id="auth-btn">
+          <i class="fa-solid fa-lock"></i> <span id="auth-btn-text">管理員登入</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="status-bar">
+      <div>工作表導覽列：</div>
+      <div class="status-badge loading" id="firebase-status">● 連線初始化中...</div>
     </div>
-    <div class="header-right">
-      <span class="user-info" id="user-name">管理者: <strong id="user-email-text"></strong></span>
-      <label class="btn btn-light disabled" id="btn-import-excel" style="cursor: pointer;">
-        <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> 匯入 Excel 至當前工作表
-        <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
-      </label>
-      <button class="btn btn-light" id="auth-btn">
-        <i class="fa-solid fa-lock"></i> <span id="auth-btn-text">管理員登入</span>
-      </button>
+
+    <div class="nav-container">
+      <div id="sheet-tabs-list" style="display: flex; gap: 8px; align-items: flex-end;"></div>
+      <button class="btn-add-tab" id="btn-add-tab" onclick="addNewSheet()" disabled title="請先登入管理員帳號"><i class="fa-solid fa-plus"></i> 新增工作表</button>
     </div>
-  </header>
 
-  <!-- 動態抓取的上次更新日期時間紀錄列 -->
-  <div class="status-bar" style="background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1e40af; font-weight: 500;">
-    <div><i class="fa-regular fa-clock" style="margin-right: 4px;"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span></div>
-    <div id="update-user-info">記錄維護：動態同步</div>
-  </div>
-
-  <div class="status-bar">
-    <div>工作表導覽列：</div>
-    <div class="status-badge loading" id="firebase-status">● 連線初始化中...</div>
-  </div>
-
-  <div class="nav-container">
-    <div id="sheet-tabs-list" style="display: flex; gap: 8px; align-items: flex-end;"></div>
-    <button class="btn-add-tab" id="btn-add-tab" onclick="addNewSheet()" disabled title="請先登入管理員帳號"><i class="fa-solid fa-plus"></i> 新增工作表</button>
-  </div>
-
-  <main id="main-content"></main>
+    <div id="main-content" style="margin-top: 24px;"></div>
+  </main>
 
   <!-- 登入 Modal -->
   <div class="modal-overlay" id="login-modal">
@@ -216,6 +250,26 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
+    // 時間格式化與更新顯示函式
+    window.formatDateTime = function(isoString) {
+      if (!isoString) return '尚無更新紀錄';
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      const yr = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hr = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${yr}年${m}月${day}日 ${hr}:${min}`;
+    };
+
+    window.updateTimeDisplay = function() {
+      const timeEl = document.getElementById('last-update-time-text');
+      if (timeEl) {
+        timeEl.innerText = window.updatedAt ? window.formatDateTime(window.updatedAt) : '尚未記錄';
+      }
+    };
+
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
       const authBtn = document.getElementById('auth-btn');
@@ -270,42 +324,20 @@
       document.getElementById('login-password').value = '';
     };
 
-    // 動態更新時間格式化輔助函數
-    window.formatDateTime = function(isoString) {
-      if (!isoString) return '尚無更新紀錄';
-      const d = new Date(isoString);
-      if (isNaN(d.getTime())) return isoString;
-      const yr = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const hr = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${yr}年${m}月${day日} ${hr}:${min}`.replace('月日', '月');
-    };
-
-    window.updateTimeDisplay = function() {
-      const timeEl = document.getElementById('last-update-time-text');
-      if (timeEl) {
-        timeEl.innerText = window.updatedAt ? window.formatDateTime(window.updatedAt) : '尚未記錄';
-      }
-    };
-
     window.saveToFirebase = async function() {
       if (!window.currentUser) return;
       try {
         const statusEl = document.getElementById('firebase-status');
         if (statusEl) { statusEl.className = 'status-badge loading'; statusEl.innerText = '● Firebase 儲存中...'; }
         
-        // 自動產生當下的真實時間
         window.updatedAt = new Date().toISOString();
+        window.updateTimeDisplay();
 
         await setDoc(docRef, {
           sheets: window.sheets,
           logoUrl: window.logoUrl,
           updatedAt: window.updatedAt
         });
-
-        window.updateTimeDisplay();
         if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
       } catch (e) {
         console.error("Firebase 寫入失敗:", e);
@@ -332,7 +364,7 @@
           window.logoUrl = data.logoUrl;
           window.renderLogo();
         }
-        if (data.updatedAt) {
+        if (data.updatedAt !== undefined) {
           window.updatedAt = data.updatedAt;
           window.updateTimeDisplay();
         }
