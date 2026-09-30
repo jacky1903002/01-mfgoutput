@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MFG Output Analysis</title>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js (加入 defer 加快載入) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
   <!-- SheetJS (XLSX) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <!-- html2canvas for Exporting PNG -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
@@ -24,7 +24,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f8fafc; color: #334155; display: flex; flex-direction: column; min-height: 100vh; }
     
-    /* === 畫面最上方更新時間列 === */
     .update-banner {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -99,7 +98,6 @@
     .chart-title { font-size: 15px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; }
     .chart-wrapper { position: relative; height: 360px; width: 100%; }
 
-    /* 登入彈跳視窗 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .modal-card { background: #ffffff; padding: 24px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
     .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #0f172a; }
@@ -113,7 +111,6 @@
 <body>
 
   <main>
-    <!-- 畫面最上方更新時間列 -->
     <div class="update-banner">
       <i class="fa-regular fa-clock"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span>
     </div>
@@ -150,7 +147,6 @@
     <div id="main-content" style="margin-top: 24px;"></div>
   </main>
 
-  <!-- 登入 Modal -->
   <div class="modal-overlay" id="login-modal">
     <div class="modal-card">
       <div class="modal-title"><i class="fa-solid fa-lock" style="color:#2563eb;"></i> 管理員登入</div>
@@ -169,7 +165,6 @@
     </div>
   </div>
 
-  <!-- 核心邏輯 JavaScript -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
@@ -250,17 +245,11 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 時間格式化與更新顯示函式
     window.formatDateTime = function(isoString) {
       if (!isoString) return '尚無更新紀錄';
       const d = new Date(isoString);
       if (isNaN(d.getTime())) return isoString;
-      const yr = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const hr = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${yr}年${m}月${day}日 ${hr}:${min}`;
+      return `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月${String(d.getDate()).padStart(2, '0')}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
 
     window.updateTimeDisplay = function() {
@@ -424,15 +413,17 @@
     window.renderTabs = function() {
       const container = document.getElementById('sheet-tabs-list');
       if (!container) return;
-      let html = '';
       const isLogined = !!window.currentUser;
+      
+      // 使用 DocumentFragment 或高效字串組裝減少 DOM 重排
+      let html = '';
       window.sheets.forEach(s => {
         const isActive = s.id === window.activeSheetId ? 'active' : '';
         html += `
           <div class="tab-item ${isActive}" onclick="switchTab('${s.id}')">
             <div>
               <i class="fa-solid fa-table" style="margin-right: 6px;"></i>
-              <span id="sheet-title-${s.id}" ${isLogined ? `ondblclick="editSheetName('${s.id}')"` : ''}>${s.name}</span>
+              <span>${s.name}</span>
             </div>
             <div>
               ${isLogined ? `<i class="fa-solid fa-pen-to-square tab-edit-icon" title="修改名稱" onclick="event.stopPropagation(); editSheetName('${s.id}');"></i>` : ''}
@@ -566,6 +557,7 @@
         html += `<div class="table-responsive-wrapper"><table class="custom-table"><thead><tr>`;
         sheetColumns.forEach(col => { html += `<th>${col.title}</th>`; });
         html += `</tr></thead><tbody>`;
+        
         currentSheet.data.forEach((row, rIdx) => {
           html += `<tr>`;
           sheetColumns.forEach(col => {
@@ -609,11 +601,14 @@
 
       container.innerHTML = html;
 
-      if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
-        setTimeout(() => { window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet)); }, 100);
-      } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
-        setTimeout(() => { renderTreemap(currentSheet); }, 100);
-      }
+      // 使用 requestAnimationFrame 取代 setTimeout，確保 DOM 渲染完成後流暢繪製圖表
+      requestAnimationFrame(() => {
+        if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
+          window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
+        } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
+          renderTreemap(currentSheet);
+        }
+      });
     };
 
     function renderTreemap(sheet) {
@@ -626,32 +621,22 @@
         return parseFloat(String(val).replace(/,/g, '')) || 0;
       }
 
-      if (!sheet || !sheet.data) {
-        container.innerHTML = '<div style="color: white; padding: 20px;">目前沒有資料可供顯示</div>';
-        return;
-      }
-
       let items = sheet.data.map(row => {
         let custKey = Object.keys(row).find(k => {
           const colDef = sheet.columns.find(c => c.key === k);
-          const title = colDef ? colDef.title : k;
-          return title.includes('客戶');
+          return (colDef ? colDef.title : k).includes('客戶');
         }) || 'customer';
 
         let totalKey = Object.keys(row).find(k => {
           const colDef = sheet.columns.find(c => c.key === k);
-          const title = colDef ? colDef.title : k;
-          return title.includes('總計');
+          return (colDef ? colDef.title : k).includes('總計');
         }) || 'total';
 
-        const cust = row[custKey] || '未知';
-        const totalVal = parseNum(row[totalKey] || 0);
-        return { customer: cust, value: totalVal };
+        return { customer: row[custKey] || '未知', value: parseNum(row[totalKey] || 0) };
       }).filter(item => item.customer !== '總計' && item.value > 0);
 
       items.sort((a, b) => b.value - a.value);
       const grandTotal = items.reduce((sum, item) => sum + item.value, 0);
-
       const colors = ['#2563eb', '#dc2626', '#84cc16', '#8b5cf6', '#0ea5e9', '#f97316', '#334155', '#475569', '#059669', '#d97706', '#64748b', '#0284c7'];
 
       let html = '';
@@ -670,7 +655,6 @@
         `;
       });
       
-      container.style.cssText = 'height: 620px !important; display: flex !important; flex-wrap: wrap !important; gap: 6px !important; padding: 12px !important; background: #0f172a !important; box-sizing: border-box !important;';
       container.innerHTML = html;
     }
 
@@ -679,13 +663,10 @@
       afterDraw(chart) {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
         const labels = chart.data.labels || [];
-        
         const yearGroups = {};
+        
         labels.forEach((lbl, idx) => {
-          let yrMatch = String(lbl).match(/(\d{2})$/);
-          if (!yrMatch) {
-            yrMatch = String(lbl).match(/^(\d{4})/);
-          }
+          let yrMatch = String(lbl).match(/(\d{2})$/) || String(lbl).match(/^(\d{4})/);
           const yr = yrMatch ? yrMatch[0] : 'Other';
           if (!yearGroups[yr]) yearGroups[yr] = [];
           yearGroups[yr].push(idx);
@@ -696,15 +677,9 @@
 
         ctx.save();
         for (let i = 0; i < yearKeys.length - 1; i++) {
-          const currYearIndices = yearGroups[yearKeys[i]];
-          const nextYearIndices = yearGroups[yearKeys[i + 1]];
-          
-          const prevLastIdx = currYearIndices[currYearIndices.length - 1];
-          const currFirstIdx = nextYearIndices[0];
-
-          const prevLastX = x.getPixelForValue(prevLastIdx);
-          const currFirstX = x.getPixelForValue(currFirstIdx);
-          const separatorX = (prevLastX + currFirstX) / 2;
+          const prevLastIdx = yearGroups[yearKeys[i]].slice(-1)[0];
+          const currFirstIdx = yearGroups[yearKeys[i + 1]][0];
+          const separatorX = (x.getPixelForValue(prevLastIdx) + x.getPixelForValue(currFirstIdx)) / 2;
 
           ctx.beginPath();
           ctx.strokeStyle = '#000000';
@@ -721,8 +696,7 @@
       if (val === undefined || val === null || val === "-" || val === "") return 0;
       let str = String(val).trim();
       let hasPercentSign = str.includes('%');
-      str = str.replace(/[^0-9.-]/g, '');
-      let num = parseFloat(str);
+      let num = parseFloat(str.replace(/[^0-9.-]/g, ''));
       if (isNaN(num)) return 0;
       if (hasPercentSign) return num;
       else if (isPercentageHint && Math.abs(num) <= 1.0 && num !== 0) return num * 100;
@@ -742,9 +716,7 @@
         const matchJan = str.match(/([A-Za-z]{3})-(\d{2})/);
         if (matchJan) {
           const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
-          const m = months[matchJan[1]] || 0;
-          const y = 2000 + parseInt(matchJan[2], 10);
-          return new Date(y, m, 1).getTime();
+          return new Date(2000 + parseInt(matchJan[2], 10), months[matchJan[1]] || 0, 1).getTime();
         }
         const matchStandard = str.match(/(\d{4})[/-](\d{1,2})/);
         if (matchStandard) {
@@ -754,32 +726,22 @@
       };
 
       const sortedMonthKeys = [...monthKeys].sort((a, b) => parseDateVal(a) - parseDateVal(b));
-
-      const labels = sortedMonthKeys.map(k => {
-        const colDef = sheet.columns.find(c => c.key === k);
-        return colDef ? colDef.title : k;
-      });
+      const labels = sortedMonthKeys.map(k => (sheet.columns.find(c => c.key === k) || {}).title || k);
 
       const getRowDataByItemName = (itemName, isPercentage = false) => {
-        const targetRow = sheet.data.find(r => {
-          const name = r.item || r.項目 || '';
-          return name.includes(itemName);
-        });
+        const targetRow = sheet.data.find(r => (r.item || r.項目 || '').includes(itemName));
         if (!targetRow) return sortedMonthKeys.map(() => 0);
         return sortedMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
       };
 
       if (config.type === "combo") {
-        const valData = getRowDataByItemName("合計產出市值");
-        const qtyData = getRowDataByItemName("合計產出數量");
-
         window.chartInstances[config.id] = new Chart(canvas, {
           type: 'bar',
           data: {
             labels: labels,
             datasets: [
-              { type: 'bar', label: '合計產出市值(NT$)', data: valData, backgroundColor: 'rgba(59, 130, 246, 0.75)', borderColor: '#3b82f6', borderWidth: 1, yAxisID: 'y' },
-              { type: 'line', label: '合計產出數量(PCS)', data: qtyData, borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
+              { type: 'bar', label: '合計產出市值(NT$)', data: getRowDataByItemName("合計產出市值"), backgroundColor: 'rgba(59, 130, 246, 0.75)', borderColor: '#3b82f6', borderWidth: 1, yAxisID: 'y' },
+              { type: 'line', label: '合計產出數量(PCS)', data: getRowDataByItemName("合計產出數量"), borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.2, pointRadius: 4, yAxisID: 'y1' }
             ]
           },
           plugins: [yearSeparatorPlugin],
@@ -793,19 +755,18 @@
           }
         });
       } else if (config.type === "line") {
-        const lineData = getRowDataByItemName(config.dataKey, true);
         window.chartInstances[config.id] = new Chart(canvas, {
           type: 'line',
           data: {
             labels: labels,
-            datasets: [{ label: config.dataKey, data: lineData, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, borderWidth: 2, tension: 0.2, pointRadius: 4 }]
+            datasets: [{ label: config.dataKey, data: getRowDataByItemName(config.dataKey, true), borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, borderWidth: 2, tension: 0.2, pointRadius: 4 }]
           },
           plugins: [yearSeparatorPlugin],
           options: {
             responsive: true, maintainAspectRatio: false,
             scales: {
               x: { grid: { display: false } },
-              y: { ticks: { callback: function(value) { return value + '%'; } } }
+              y: { ticks: { callback: (value) => value + '%' } }
             }
           }
         });
@@ -816,23 +777,17 @@
       const element = document.getElementById(`export-area-${chartId}`);
       if (!element) return;
       
-      const buttons = element.querySelectorAll('button, .export-btn');
+      const buttons = element.querySelectorAll('button');
       buttons.forEach(b => b.style.display = 'none');
 
-      html2canvas(element, { 
-        scale: 3, 
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      }).then(canvas => {
+      html2canvas(element, { scale: 3, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
         buttons.forEach(b => b.style.display = '');
-
         const link = document.createElement('a');
         link.download = `${title}.png`;
         link.href = canvas.toDataURL('image/png', 1.0);
         link.click();
       }).catch((err) => {
         buttons.forEach(b => b.style.display = '');
-        console.error("匯出圖片失敗：", err);
         alert("匯出圖片失敗！");
       });
     };
