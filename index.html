@@ -98,10 +98,10 @@
     </div>
   </header>
 
-  <!-- 新增的上次更新日期時間紀錄列 -->
+  <!-- 動態抓取的上次更新日期時間紀錄列 -->
   <div class="status-bar" style="background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1e40af; font-weight: 500;">
-    <div><i class="fa-regular fa-clock" style="margin-right: 4px;"></i> 上次更新日期時間：2026年9月30日 22:48</div>
-    <div id="update-user-info">記錄維護：管理者</div>
+    <div><i class="fa-regular fa-clock" style="margin-right: 4px;"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span></div>
+    <div id="update-user-info">記錄維護：動態同步</div>
   </div>
 
   <div class="status-bar">
@@ -160,6 +160,7 @@
 
     window.currentUser = null;
     window.logoUrl = "";
+    window.updatedAt = null;
     window.chartInstances = {};
 
     const defaultColumns1 = [
@@ -269,16 +270,42 @@
       document.getElementById('login-password').value = '';
     };
 
+    // 動態更新時間格式化輔助函數
+    window.formatDateTime = function(isoString) {
+      if (!isoString) return '尚無更新紀錄';
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      const yr = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hr = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${yr}年${m}月${day日} ${hr}:${min}`.replace('月日', '月');
+    };
+
+    window.updateTimeDisplay = function() {
+      const timeEl = document.getElementById('last-update-time-text');
+      if (timeEl) {
+        timeEl.innerText = window.updatedAt ? window.formatDateTime(window.updatedAt) : '尚未記錄';
+      }
+    };
+
     window.saveToFirebase = async function() {
       if (!window.currentUser) return;
       try {
         const statusEl = document.getElementById('firebase-status');
         if (statusEl) { statusEl.className = 'status-badge loading'; statusEl.innerText = '● Firebase 儲存中...'; }
+        
+        // 自動產生當下的真實時間
+        window.updatedAt = new Date().toISOString();
+
         await setDoc(docRef, {
           sheets: window.sheets,
           logoUrl: window.logoUrl,
-          updatedAt: new Date().toISOString()
+          updatedAt: window.updatedAt
         });
+
+        window.updateTimeDisplay();
         if (statusEl) { statusEl.className = 'status-badge success'; statusEl.innerText = '● Firebase 已連線同步'; }
       } catch (e) {
         console.error("Firebase 寫入失敗:", e);
@@ -304,6 +331,10 @@
         if (data.logoUrl !== undefined) {
           window.logoUrl = data.logoUrl;
           window.renderLogo();
+        }
+        if (data.updatedAt) {
+          window.updatedAt = data.updatedAt;
+          window.updateTimeDisplay();
         }
       }
       window.renderTabs();
