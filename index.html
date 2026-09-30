@@ -98,6 +98,12 @@
     </div>
   </header>
 
+  <!-- 新增的上次更新日期時間紀錄列 -->
+  <div class="status-bar" style="background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1e40af; font-weight: 500;">
+    <div><i class="fa-regular fa-clock" style="margin-right: 4px;"></i> 上次更新日期時間：2026年9月30日 22:48</div>
+    <div id="update-user-info">記錄維護：管理者</div>
+  </div>
+
   <div class="status-bar">
     <div>工作表導覽列：</div>
     <div class="status-badge loading" id="firebase-status">● 連線初始化中...</div>
@@ -507,7 +513,6 @@
         html += `</tbody></table></div>`;
       }
 
-      // 改進判斷條件：透過檢查欄位標題是否包含「客戶」或「總計」來自動判斷是否為客戶產值表
       const hasCustomerCol = sheetColumns.some(c => c.title.includes('客戶') || c.title.includes('總計'));
       const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
       const isSecondSheet = (!isFirstSheet && hasCustomerCol);
@@ -564,7 +569,6 @@
       }
 
       let items = sheet.data.map(row => {
-        // 自動尋找對應的欄位 Key
         let custKey = Object.keys(row).find(k => {
           const colDef = sheet.columns.find(c => c.key === k);
           const title = colDef ? colDef.title : k;
