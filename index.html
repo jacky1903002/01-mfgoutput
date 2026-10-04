@@ -415,7 +415,6 @@
       if (!container) return;
       const isLogined = !!window.currentUser;
       
-      // 使用 DocumentFragment 或高效字串組裝減少 DOM 重排
       let html = '';
       window.sheets.forEach(s => {
         const isActive = s.id === window.activeSheetId ? 'active' : '';
@@ -596,17 +595,27 @@
             </div>
             <div id="treemap-container" style="width: 100%; height: 620px; background: #1e293b; border-radius: 8px; padding: 12px; display: flex; flex-wrap: wrap; position: relative; gap: 4px; overflow: hidden;"></div>
           </div>
+
+          <!-- 新增：客戶產值變化分析區塊 -->
+          <div class="charts-section-title" style="margin-top: 30px;"><i class="fa-solid fa-scale-balanced"></i> 客戶產值變化分析</div>
+          <div class="chart-page" id="export-area-s2_analysis" style="max-width: 100%; margin-bottom: 30px;">
+            <div class="chart-header">
+              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (依最後兩個月比較)</div>
+              <button class="btn btn-success" onclick="exportChartToPNG('s2_analysis', '客戶產值變化分析')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
+            </div>
+            <div id="customer-change-analysis-container" style="width: 100%;"></div>
+          </div>
         `;
       }
 
       container.innerHTML = html;
 
-      // 使用 requestAnimationFrame 取代 setTimeout，確保 DOM 渲染完成後流暢繪製圖表
       requestAnimationFrame(() => {
         if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
           window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
         } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
           renderTreemap(currentSheet);
+          renderCustomerChangeAnalysis(currentSheet);
         }
       });
     };
@@ -655,6 +664,123 @@
         `;
       });
       
+      container.innerHTML = html;
+    }
+
+    function renderCustomerChangeAnalysis(sheet) {
+      const container = document.getElementById('customer-change-analysis-container');
+      if (!container) return;
+
+      function parseNum(val) {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        return parseFloat(String(val).replace(/,/g, '')) || 0;
+      }
+
+      const firstRow = sheet.data[0] || {};
+      const monthKeys = Object.keys(firstRow).filter(k => k.startsWith('m_') || /^\d{6}$/.test(k));
+      
+      if (monthKeys.length < 2) {
+        container.innerHTML = '<div style="color: #64748b; font-size: 13px;">資料月份不足兩個月，無法進行產值變化比較。</div>';
+        return;
+      }
+
+      const sortedMonths = monthKeys.sort();
+      const prevMonthKey = sortedMonths[sortedMonths.length - 2]; 
+      const currMonthKey = sortedMonths[sortedMonths.length - 1]; 
+
+      const prevMonthTitle = (sheet.columns.find(c => c.key === prevMonthKey) || {}).title || prevMonthKey;
+      const currMonthTitle = (sheet.columns.find(c => c.key === currMonthKey) || {}).title || currMonthKey;
+
+      let growthList = [];
+      let declineList = [];
+
+      sheet.data.forEach(row => {
+        let custKey = Object.keys(row).find(k => {
+          const colDef = sheet.columns.find(c => c.key === k);
+          return (colDef ? colDef.title : k).includes('客戶');
+        }) || 'customer';
+
+        const customerName = row[custKey] || '未知';
+        if (customerName === '總計' || customerName.includes('市場件')) return; 
+
+        const currVal = parseNum(row[currMonthKey]);
+        const prevVal = parseNum(row[prevMonthKey]);
+        const diff = currVal - prevVal;
+
+        if (diff > 1000000) {
+          growthList.push({ customer: customerName, diff, currVal, prevVal });
+        } else if (diff < -1000000) {
+          declineList.push({ customer: customerName, diff, currVal, prevVal });
+        }
+      });
+
+      growthList.sort((a, b) => b.diff - a.diff);
+      declineList.sort((a, b) => a.diff - b.diff);
+
+      const formatCurrency = (num) => {
+        return num.toLocaleString('en-US');
+      };
+
+      let html = `
+        <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
+          比較區間：<strong style="color: #0f172a;">${currMonthTitle}</strong> 對比 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          
+          <!-- A. 產能成長 -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+            <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-arrow-trend-up"></i> A. 產能成長 (&gt; +100萬)
+            </div>
+            ${growthList.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
+                    <th style="padding: 6px;">客戶</th>
+                    <th style="padding: 6px; text-align: right;">產值差額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${growthList.map(item => `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                      <td style="padding: 8px 6px; font-weight: 600; color: #1e293b;">${item.customer}</td>
+                      <td style="padding: 8px 6px; text-align: right; color: #059669; font-weight: 600;">+${formatCurrency(item.diff)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+
+          <!-- B. 產能疲軟 -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+            <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬)
+            </div>
+            ${declineList.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
+                    <th style="padding: 6px;">客戶</th>
+                    <th style="padding: 6px; text-align: right;">產值差額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${declineList.map(item => `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                      <td style="padding: 8px 6px; font-weight: 600; color: #1e293b;">${item.customer}</td>
+                      <td style="padding: 8px 6px; text-align: right; color: #dc2626; font-weight: 600;">${formatCurrency(item.diff)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+
+        </div>
+      `;
+
       container.innerHTML = html;
     }
 
