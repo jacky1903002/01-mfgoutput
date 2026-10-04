@@ -600,7 +600,7 @@
           <div class="charts-section-title" style="margin-top: 30px;"><i class="fa-solid fa-scale-balanced"></i> 客戶產值變化分析</div>
           <div class="chart-page" id="export-area-s2_analysis" style="max-width: 100%; margin-bottom: 30px;">
             <div class="chart-header">
-              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (依最後兩個月比較)</div>
+              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (依最後兩個月比較 - 前三名)</div>
               <button class="btn btn-success" onclick="exportChartToPNG('s2_analysis', '客戶產值變化分析')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
             </div>
             <div id="customer-change-analysis-container" style="width: 100%;"></div>
@@ -702,7 +702,7 @@
         }) || 'customer';
 
         const customerName = row[custKey] || '未知';
-        if (customerName === '總計') return; // 僅排除總計列，保留「市場件」等項目
+        if (customerName === '總計') return;
 
         const currVal = parseNum(row[currMonthKey]);
         const prevVal = parseNum(row[prevMonthKey]);
@@ -718,22 +718,26 @@
       growthList.sort((a, b) => b.diff - a.diff);
       declineList.sort((a, b) => a.diff - b.diff);
 
+      // 取前三名
+      const topGrowth = growthList.slice(0, 3);
+      const topDecline = declineList.slice(0, 3);
+
       const formatCurrency = (num) => {
         return num.toLocaleString('en-US');
       };
 
       let html = `
         <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
-          比較區間：<strong style="color: #0f172a;">${currMonthTitle}</strong> 對比 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）
+          比較區間：<strong style="color: #0f172a;">${currMonthTitle}</strong> 對比 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）- 僅顯示前三名
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           
           <!-- A. 產能成長 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-arrow-trend-up"></i> A. 產能成長 (&gt; +100萬)
+              <i class="fa-solid fa-arrow-trend-up"></i> A. 產能成長 (&gt; +100萬) - 前三名
             </div>
-            ${growthList.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
+            ${topGrowth.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
               <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                 <thead>
                   <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
@@ -742,7 +746,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${growthList.map(item => `
+                  ${topGrowth.map(item => `
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                       <td style="padding: 8px 6px; font-weight: 600; color: #1e293b;">${item.customer}</td>
                       <td style="padding: 8px 6px; text-align: right; color: #059669; font-weight: 600;">+${formatCurrency(item.diff)}</td>
@@ -756,9 +760,9 @@
           <!-- B. 產能疲軟 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬)
+              <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
             </div>
-            ${declineList.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
+            ${topDecline.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
               <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                 <thead>
                   <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
@@ -767,7 +771,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${declineList.map(item => `
+                  ${topDecline.map(item => `
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                       <td style="padding: 8px 6px; font-weight: 600; color: #1e293b;">${item.customer}</td>
                       <td style="padding: 8px 6px; text-align: right; color: #dc2626; font-weight: 600;">${formatCurrency(item.diff)}</td>
