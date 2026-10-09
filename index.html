@@ -19,10 +19,61 @@
       --border-color: #e2e8f0;
       --text-muted: #64748b;
       --success-text: #059669;
+      --primary-color: #2563eb;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #f8fafc; color: #334155; display: flex; flex-direction: column; min-height: 100vh; }
+    body { background-color: #f8fafc; color: #334155; min-height: 100vh; }
+
+    /* 入口門戶全螢幕登入遮罩 */
+    .login-portal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .login-portal-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .portal-icon-box {
+      width: 56px;
+      height: 56px;
+      background: #eff6ff;
+      border-radius: 12px;
+      color: var(--primary-color);
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px auto;
+    }
+    .login-portal-card h2 { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+    .login-portal-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+    .portal-form-group { text-align: left; margin-bottom: 16px; }
+    .portal-form-group label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    .portal-input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .portal-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+    .btn-portal-submit { width: 100%; padding: 12px; background: var(--primary-color); color: #fff; font-size: 14px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+    .btn-portal-submit:hover { background: #1d4ed8; }
+
+    /* 專案內容主區塊 (登入前隱藏) */
+    .app-container {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+    }
     
     .update-banner {
       background: var(--card-bg);
@@ -37,10 +88,7 @@
       align-items: center;
       gap: 6px;
     }
-    .update-banner span {
-      color: var(--success-text);
-      font-weight: 600;
-    }
+    .update-banner span { color: var(--success-text); font-weight: 600; }
 
     header {
       display: flex;
@@ -55,22 +103,22 @@
     .logo-box img { width: 100%; height: 100%; object-fit: cover; }
     h1 { font-size: 20px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; }
     
-    .header-right { display: flex; align-items: center; gap: 12px; }
-    .user-info { font-size: 14px; color: #64748b; display: none; }
-    .btn { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s; text-decoration: none; }
-    .btn-light { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .btn-light:hover { background: #e2e8f0; }
+    .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .user-info { font-size: 13px; color: #64748b; margin-right: 8px; }
+    .btn { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s; text-decoration: none; }
+    .btn-light { background: #ffffff; color: #475569; border: 1px solid #cbd5e1; }
+    .btn-light:hover { background: #f1f5f9; }
     .btn-success { background: #10b981; color: white; }
     .btn-success:hover { background: #059669; }
     .btn-danger { background: #ef4444; color: white; }
     .btn-danger:hover { background: #dc2626; }
-    .btn.disabled { opacity: 0.5; pointer-events: none; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
 
-    .status-bar { background: #f8fafc; padding: 8px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #64748b; }
+    .status-bar { background: #ffffff; padding: 8px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #64748b; }
     .status-badge { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
     .status-badge.success { color: #059669; }
     .status-badge.loading { color: #d97706; }
-    .status-badge.read-only { color: #dc2626; }
 
     .nav-container { background: #ffffff; padding: 12px 24px 0 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px; overflow-x: auto; }
     .tab-item { padding: 10px 18px; font-size: 14px; font-weight: 500; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-bottom: none; border-top-left-radius: 8px; border-top-right-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: all 0.2s; }
@@ -97,72 +145,82 @@
     .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .chart-title { font-size: 15px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; }
     .chart-wrapper { position: relative; height: 360px; width: 100%; }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-card { background: #ffffff; padding: 24px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #0f172a; }
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
-    .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
   </style>
 </head>
 <body>
 
-  <main>
-    <div class="update-banner">
-      <i class="fa-regular fa-clock"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span>
-    </div>
-
-    <header>
-      <div class="header-left">
-        <div class="logo-box" id="logo-box" title="點擊更換 Logo 圖片" onclick="changeLogoUrl()">
-          <i class="fa-solid fa-chart-line" id="logo-icon"></i>
-        </div>
-        <h1>產能量能分析&各客戶累積產值</h1>
+  <!-- 1. 入口全螢幕 Firebase 登入遮罩 -->
+  <div class="login-portal-overlay" id="login-portal">
+    <div class="login-portal-card">
+      <div class="portal-icon-box">
+        <i class="fa-solid fa-chart-line"></i>
       </div>
-      <div class="header-right">
-        <span class="user-info" id="user-name">管理者: <strong id="user-email-text"></strong></span>
-        <label class="btn btn-light disabled" id="btn-import-excel" style="cursor: pointer;">
-          <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> 匯入 Excel 至當前工作表
-          <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
-        </label>
-        <button class="btn btn-light" id="auth-btn">
-          <i class="fa-solid fa-lock"></i> <span id="auth-btn-text">管理員登入</span>
-        </button>
-      </div>
-    </header>
-
-    <div class="status-bar">
-      <div>工作表導覽列：</div>
-      <div class="status-badge loading" id="firebase-status">● 連線初始化中...</div>
-    </div>
-
-    <div class="nav-container">
-      <div id="sheet-tabs-list" style="display: flex; gap: 8px; align-items: flex-end;"></div>
-      <button class="btn-add-tab" id="btn-add-tab" onclick="addNewSheet()" disabled title="請先登入管理員帳號"><i class="fa-solid fa-plus"></i> 新增工作表</button>
-    </div>
-
-    <div id="main-content" style="margin-top: 24px;"></div>
-  </main>
-
-  <div class="modal-overlay" id="login-modal">
-    <div class="modal-card">
-      <div class="modal-title"><i class="fa-solid fa-lock" style="color:#2563eb;"></i> 管理員登入</div>
-      <div class="form-group">
+      <h2>MFG 產能分析系統</h2>
+      <p>請輸入 Firebase 帳號密碼存取後台資料</p>
+      <div class="portal-form-group">
         <label>電子郵件 (Email)</label>
-        <input type="email" id="login-email" class="form-control" placeholder="admin@example.com">
+        <input type="email" id="portal-email" class="portal-input" placeholder="admin@example.com">
       </div>
-      <div class="form-group">
+      <div class="portal-form-group">
         <label>密碼 (Password)</label>
-        <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+        <input type="password" id="portal-password" class="portal-input" placeholder="••••••••">
       </div>
-      <div class="modal-actions">
-        <button class="btn btn-light" onclick="closeLoginModal()">取消</button>
-        <button class="btn btn-success" id="do-login-btn">確認登入</button>
-      </div>
+      <button class="btn-portal-submit" id="portal-login-btn">驗證登入</button>
     </div>
+  </div>
+
+  <!-- 專案主要結構 -->
+  <div class="app-container" id="app-container">
+    <main>
+      <div class="update-banner">
+        <i class="fa-regular fa-clock"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span>
+      </div>
+
+      <header>
+        <div class="header-left">
+          <div class="logo-box" id="logo-box" title="點擊更換 Logo 圖片" onclick="changeLogoUrl()">
+            <i class="fa-solid fa-chart-line" id="logo-icon"></i>
+          </div>
+          <h1>產能量能分析&各客戶累積產值</h1>
+        </div>
+        <div class="header-right">
+          <span class="user-info" id="user-name">使用者: <strong id="user-email-text"></strong></span>
+
+          <!-- 匯出 Excel 功能按鈕 -->
+          <button class="btn btn-light" id="btn-export-excel" onclick="exportAllSheetsToExcel()">
+            <i class="fa-solid fa-file-export" style="color: #059669;"></i> 匯出 Excel
+          </button>
+
+          <!-- 匯入 Excel 至當前工作表 -->
+          <label class="btn btn-light" id="btn-import-excel" style="cursor: pointer;">
+            <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> 匯入 Excel 至當前工作表
+            <input type="file" id="upload-excel" accept=".xlsx, .xls" style="display: none;">
+          </label>
+
+          <!-- 一次匯入所有相符工作表 -->
+          <label class="btn btn-light" id="btn-import-all-excel" style="cursor: pointer;">
+            <i class="fa-solid fa-file-circle-plus" style="color: #2563eb;"></i> 一次匯入所有工作表
+            <input type="file" id="upload-all-excel" accept=".xlsx, .xls" style="display: none;">
+          </label>
+
+          <button class="btn btn-danger" id="auth-btn">
+            <i class="fa-solid fa-right-from-bracket"></i> 登出系統
+          </button>
+        </div>
+      </header>
+
+      <div class="status-bar">
+        <div>工作表導覽列：</div>
+        <div class="status-badge success" id="firebase-status">● Firebase 已連線同步</div>
+      </div>
+
+      <div class="nav-container">
+        <div id="sheet-tabs-list" style="display: flex; gap: 8px; align-items: flex-end;"></div>
+        <button class="btn-add-tab" id="btn-add-tab" onclick="addNewSheet()" title="新增工作表"><i class="fa-solid fa-plus"></i> 新增工作表</button>
+      </div>
+
+      <div id="main-content" style="margin-top: 24px;"></div>
+    </main>
   </div>
 
   <script type="module">
@@ -259,59 +317,50 @@
       }
     };
 
+    // 1. Firebase 入口認證監聽：未驗證隱藏專案、驗證後顯示
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
-      const authBtn = document.getElementById('auth-btn');
-      const authBtnText = document.getElementById('auth-btn-text');
-      const name = document.getElementById('user-name');
+      const loginPortal = document.getElementById('login-portal');
+      const appContainer = document.getElementById('app-container');
       const emailText = document.getElementById('user-email-text');
-      const addBtn = document.getElementById('btn-add-tab');
-      const importBtn = document.getElementById('btn-import-excel');
 
       if (user) {
-        authBtnText.innerText = "登出";
-        authBtn.className = "btn btn-danger";
+        loginPortal.style.display = "none";
+        appContainer.style.display = "flex";
         emailText.innerText = user.email;
-        name.style.display = "inline-block";
-        addBtn.disabled = false;
-        importBtn.classList.remove('disabled');
       } else {
-        authBtnText.innerText = "管理員登入";
-        authBtn.className = "btn btn-light";
-        name.style.display = "none";
-        addBtn.disabled = true;
-        importBtn.classList.add('disabled');
+        loginPortal.style.display = "flex";
+        appContainer.style.display = "none";
       }
       window.renderTabs();
       window.renderMainContent();
     });
 
-    document.getElementById('auth-btn').addEventListener('click', () => {
-      if (window.currentUser) {
-        signOut(auth).then(() => alert('已成功登出！'));
-      } else {
-        document.getElementById('login-modal').style.display = 'flex';
-      }
-    });
+    // 門戶登入驗證
+    const handlePortalLogin = () => {
+      const email = document.getElementById('portal-email').value.trim();
+      const password = document.getElementById('portal-password').value;
+      if (!email || !password) return alert('請輸入完整的 Email 與密碼！');
 
-    document.getElementById('do-login-btn').addEventListener('click', () => {
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
-      if (!email || !password) return alert('請輸入 Email 與密碼！');
       signInWithEmailAndPassword(auth, email, password)
         .then(() => {
-          window.closeLoginModal();
-          alert('登入成功！已解除編輯鎖定。');
+          document.getElementById('portal-password').value = '';
         })
         .catch(error => {
           alert('登入失敗：' + error.message);
         });
+    };
+
+    document.getElementById('portal-login-btn').addEventListener('click', handlePortalLogin);
+    document.getElementById('portal-password').addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') handlePortalLogin();
     });
 
-    window.closeLoginModal = function() {
-      document.getElementById('login-modal').style.display = 'none';
-      document.getElementById('login-password').value = '';
-    };
+    document.getElementById('auth-btn').addEventListener('click', () => {
+      if (confirm('確定要登出系統嗎？')) {
+        signOut(auth);
+      }
+    });
 
     window.saveToFirebase = async function() {
       if (!window.currentUser) return;
@@ -334,11 +383,6 @@
     };
 
     onSnapshot(docRef, (docSnap) => {
-      const statusEl = document.getElementById('firebase-status');
-      if (statusEl) { 
-        statusEl.className = window.currentUser ? 'status-badge success' : 'status-badge read-only'; 
-        statusEl.innerText = window.currentUser ? '● Firebase 已連線 (管理員權限)' : '● Firebase 唯讀模式 (未登入)'; 
-      }
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.sheets && Array.isArray(data.sheets)) {
@@ -362,8 +406,35 @@
       window.renderMainContent();
     });
 
+    // 2. 匯出 Excel (導出所有工作表)
+    window.exportAllSheetsToExcel = function() {
+      try {
+        if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
+        const wb = XLSX.utils.book_new();
+
+        window.sheets.forEach(sheet => {
+          const headers = (sheet.columns || []).map(c => c.title);
+          const rowsData = (sheet.data || []).map(row => {
+            const obj = {};
+            (sheet.columns || []).forEach(c => {
+              obj[c.title] = row[c.key] || '';
+            });
+            return obj;
+          });
+
+          const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
+          XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+        });
+
+        XLSX.writeFile(wb, `MFG_Output_Analysis_${new Date().toISOString().slice(0,10)}.xlsx`);
+      } catch (err) {
+        alert('匯出 Excel 失敗：' + err.message);
+      }
+    };
+
+    // 單一工作表匯入
     document.getElementById('upload-excel').addEventListener('change', function(e) {
-      if (!window.currentUser) return alert('請先登入管理員帳號後再進行匯入！');
+      if (!window.currentUser) return;
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -390,6 +461,48 @@
       reader.readAsArrayBuffer(file);
     });
 
+    // 3. 一次匯入所有相符的工作表
+    document.getElementById('upload-all-excel').addEventListener('change', function(e) {
+      if (!window.currentUser) return;
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          let importedCount = 0;
+
+          workbook.SheetNames.forEach(sheetName => {
+            const matchedSheet = window.sheets.find(s => s.name.trim() === sheetName.trim());
+            if (matchedSheet) {
+              const worksheet = workbook.Sheets[sheetName];
+              const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
+              if (rawJson.length > 0) {
+                const parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h.trim() }));
+                matchedSheet.columns = parsedColumns;
+                matchedSheet.data = rawJson;
+                importedCount++;
+              }
+            }
+          });
+
+          if (importedCount > 0) {
+            window.saveToFirebase();
+            window.renderMainContent();
+            alert(`成功更新 ${importedCount} 個名稱相符的工作表！`);
+          } else {
+            alert('Excel 活頁簿中的工作表名稱與網頁中的工作表名稱不符！');
+          }
+        } catch (err) {
+          alert('解析 Excel 失敗：' + err.message);
+        }
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
     window.renderLogo = function() {
       const logoBox = document.getElementById('logo-box');
       if (!logoBox) return;
@@ -401,7 +514,7 @@
     };
 
     window.changeLogoUrl = function() {
-      if (!window.currentUser) return alert('請登入管理員帳號後再更換 Logo！');
+      if (!window.currentUser) return;
       const inputUrl = prompt("請輸入 Logo 圖示的圖片網址 (URL)：", window.logoUrl || "");
       if (inputUrl !== null) {
         window.logoUrl = inputUrl.trim();
@@ -413,7 +526,6 @@
     window.renderTabs = function() {
       const container = document.getElementById('sheet-tabs-list');
       if (!container) return;
-      const isLogined = !!window.currentUser;
       
       let html = '';
       window.sheets.forEach(s => {
@@ -425,8 +537,8 @@
               <span>${s.name}</span>
             </div>
             <div>
-              ${isLogined ? `<i class="fa-solid fa-pen-to-square tab-edit-icon" title="修改名稱" onclick="event.stopPropagation(); editSheetName('${s.id}');"></i>` : ''}
-              ${(window.sheets.length > 1 && isLogined) ? `<i class="fa-solid fa-xmark tab-delete-btn" title="刪除工作表" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
+              <i class="fa-solid fa-pen-to-square tab-edit-icon" title="修改名稱" onclick="event.stopPropagation(); editSheetName('${s.id}');"></i>
+              ${window.sheets.length > 1 ? `<i class="fa-solid fa-xmark tab-delete-btn" title="刪除工作表" onclick="deleteSheet(event, '${s.id}')"></i>` : ''}
             </div>
           </div>
         `;
@@ -505,11 +617,11 @@
       if (!window.currentUser) return;
       const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet) return;
-      const colName = prompt("請輸入新增欄位名稱：", "新欄位");
+      const colName = prompt("請輸入新增欄位名稱：", "202609");
       if (!colName || colName.trim() === "") return;
-      const newKey = `custom_col_${Date.now()}`;
+      const newKey = `col_${Date.now()}`;
       curSheet.columns.push({ key: newKey, title: colName.trim() });
-      curSheet.data.forEach(row => { row[newKey] = "-"; });
+      curSheet.data.forEach(row => { row[newKey] = "0"; });
       window.saveToFirebase();
       window.renderMainContent();
     };
@@ -532,23 +644,21 @@
       }
     };
 
+    // 4. 圖表動態響應與渲染控制
     window.renderMainContent = function() {
       const container = document.getElementById('main-content');
       const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
-      const isLogined = !!window.currentUser;
       const sheetColumns = currentSheet.columns || [];
       let html = '';
 
-      if (isLogined) {
-        html += `
-          <div class="table-toolbar">
-            <button class="btn btn-light" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列 (Row)</button>
-            <button class="btn btn-light" onclick="deleteRow()"><i class="fa-solid fa-minus"></i> 刪除最後一列</button>
-            <button class="btn btn-light" onclick="addColumn()"><i class="fa-solid fa-columns"></i> 新增欄位 (Column)</button>
-            <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
-          </div>
-        `;
-      }
+      html += `
+        <div class="table-toolbar">
+          <button class="btn btn-light" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列 (Row)</button>
+          <button class="btn btn-light" onclick="deleteRow()"><i class="fa-solid fa-minus"></i> 刪除最後一列</button>
+          <button class="btn btn-light" onclick="addColumn()"><i class="fa-solid fa-columns"></i> 新增欄位 (Column)</button>
+          <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
+        </div>
+      `;
 
       if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
         html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。</div>`;
@@ -560,7 +670,7 @@
         currentSheet.data.forEach((row, rIdx) => {
           html += `<tr>`;
           sheetColumns.forEach(col => {
-            html += `<td ${isLogined ? `contenteditable="true" onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)"` : ''}>${row[col.key] || '-'}</td>`;
+            html += `<td contenteditable="true" onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)">${row[col.key] || '-'}</td>`;
           });
           html += `</tr>`;
         });
@@ -596,7 +706,6 @@
             <div id="treemap-container" style="width: 100%; height: 620px; background: #1e293b; border-radius: 8px; padding: 12px; display: flex; flex-wrap: wrap; position: relative; gap: 4px; overflow: hidden;"></div>
           </div>
 
-          <!-- 客戶產值變化分析區塊 -->
           <div class="charts-section-title" style="margin-top: 30px;"><i class="fa-solid fa-scale-balanced"></i> 客戶產值變化分析</div>
           <div class="chart-page" id="export-area-s2_analysis" style="max-width: 100%; margin-bottom: 30px;">
             <div class="chart-header">
@@ -678,7 +787,7 @@
       }
 
       const firstRow = sheet.data[0] || {};
-      const monthKeys = Object.keys(firstRow).filter(k => k.startsWith('m_') || /^\d{6}$/.test(k));
+      const monthKeys = Object.keys(firstRow).filter(k => k.startsWith('m_') || /^\d{6}$/.test(k) || /^\d{4}/.test(k));
       
       if (monthKeys.length < 2) {
         container.innerHTML = '<div style="color: #64748b; font-size: 13px;">資料月份不足兩個月，無法進行產值變化比較。</div>';
@@ -718,13 +827,10 @@
       growthList.sort((a, b) => b.diff - a.diff);
       declineList.sort((a, b) => a.diff - b.diff);
 
-      // 取前三名
       const topGrowth = growthList.slice(0, 3);
       const topDecline = declineList.slice(0, 3);
 
-      const formatCurrency = (num) => {
-        return num.toLocaleString('en-US');
-      };
+      const formatCurrency = (num) => num.toLocaleString('en-US');
 
       let html = `
         <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
@@ -732,7 +838,6 @@
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           
-          <!-- A. 產能成長 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-up"></i> A. 產能成長 (&gt; +100萬) - 前三名
@@ -757,7 +862,6 @@
             `}
           </div>
 
-          <!-- B. 產能疲軟 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
@@ -848,7 +952,7 @@
           const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
           return new Date(2000 + parseInt(matchJan[2], 10), months[matchJan[1]] || 0, 1).getTime();
         }
-        const matchStandard = str.match(/(\d{4})[/-](\d{1,2})/);
+        const matchStandard = str.match(/(\d{4})[/-]?(\d{1,2})/);
         if (matchStandard) {
           return new Date(parseInt(matchStandard[1], 10), parseInt(matchStandard[2], 10) - 1, 1).getTime();
         }
