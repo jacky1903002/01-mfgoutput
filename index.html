@@ -776,7 +776,7 @@
       container.innerHTML = html;
     }
 
-   function renderCustomerChangeAnalysis(sheet) {
+    function renderCustomerChangeAnalysis(sheet) {
       const container = document.getElementById('customer-change-analysis-container');
       if (!container) return;
 
@@ -900,35 +900,6 @@
           </div>
 
           <!-- B. 產能疲軟區塊 -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-            <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
-            </div>
-            ${topDecline.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
-              <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-                <thead>
-                  <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
-                    <th style="padding: 6px;">客戶</th>
-                    <th style="padding: 6px; text-align: right;">產值差額</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${topDecline.map(item => `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                      <td style="padding: 8px 6px; font-weight: 600; color: #1e293b;">${item.customer}</td>
-                      <td style="padding: 8px 6px; text-align: right; color: #dc2626; font-weight: 600;">${formatCurrency(item.diff)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `}
-          </div>
-
-        </div>
-      `;
-
-      container.innerHTML = html;
-    }
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
