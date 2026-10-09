@@ -776,7 +776,7 @@
       container.innerHTML = html;
     }
 
-    function renderCustomerChangeAnalysis(sheet) {
+   function renderCustomerChangeAnalysis(sheet) {
       const container = document.getElementById('customer-change-analysis-container');
       if (!container) return;
 
@@ -786,35 +786,71 @@
         return parseFloat(String(val).replace(/,/g, '')) || 0;
       }
 
-      const firstRow = sheet.data[0] || {};
-      const monthKeys = Object.keys(firstRow).filter(k => k.startsWith('m_') || /^\d{6}$/.test(k) || /^\d{4}/.test(k));
+      // 解析各種可能的日期字串/欄位名稱為 Timestamp，以便精準排序
+      function parseDateToTimestamp(titleOrKey) {
+        const str = String(titleOrKey).trim();
+        // 匹配 YYYYMMDD 或 YYYYMM (如 202601)
+        const matchDigits = str.match(/^(\d{4})(\d{2})/);
+        if (matchDigits) {
+          return new Date(parseInt(matchDigits[1], 10), parseInt(matchDigits[2], 10) - 1, 1).getTime();
+        }
+        // 匹配 ISO 日期或帶有分隔符的日期 (如 2026-01-01, 2026/01)
+        const parsed = Date.parse(str);
+        if (!isNaN(parsed)) return parsed;
+        return 0;
+      }
+
+      const columns = sheet.columns || [];
       
-      if (monthKeys.length < 2) {
-        container.innerHTML = '<div style="color: #64748b; font-size: 13px;">資料月份不足兩個月，無法進行產值變化比較。</div>';
+      // 動態過濾出屬於月份/日期的欄位（排除『客戶』與『總計』）
+      const monthCols = columns.filter(c => {
+        const title = String(c.title || c.key).trim();
+        if (title.includes('客戶') || title.includes('總計') || title.includes('項目')) return false;
+        const ts = parseDateToTimestamp(title);
+        return ts > 0;
+      });
+
+      // 依據實際時間先後順序從小到大排序
+      monthCols.sort((a, b) => {
+        const tsA = parseDateToTimestamp(a.title || a.key);
+        const tsB = parseDateToTimestamp(b.title || b.key);
+        return tsA - tsB;
+      });
+
+      if (monthCols.length < 2) {
+        container.innerHTML = '<div style="color: #64748b; font-size: 13px; padding: 12px 0;">資料月份不足兩個月，無法進行產值變化比較。</div>';
         return;
       }
 
-      const sortedMonths = monthKeys.sort();
-      const prevMonthKey = sortedMonths[sortedMonths.length - 2]; 
-      const currMonthKey = sortedMonths[sortedMonths.length - 1]; 
+      // 取出最後兩個月份欄位進行增減比較
+      const prevMonthCol = monthCols[monthCols.length - 2];
+      const currMonthCol = monthCols[monthCols.length - 1];
 
-      const prevMonthTitle = (sheet.columns.find(c => c.key === prevMonthKey) || {}).title || prevMonthKey;
-      const currMonthTitle = (sheet.columns.find(c => c.key === currMonthKey) || {}).title || currMonthKey;
+      // 格式化顯示名稱 (例：取 YYYY-MM)
+      const formatMonthDisplay = (col) => {
+        const raw = String(col.title || col.key).trim();
+        const match = raw.match(/(\d{4})[-/]?(\d{2})/);
+        return match ? `${match[1]}-${match[2]}` : raw;
+      };
+
+      const prevMonthTitle = formatMonthDisplay(prevMonthCol);
+      const currMonthTitle = formatMonthDisplay(currMonthCol);
 
       let growthList = [];
       let declineList = [];
 
       sheet.data.forEach(row => {
+        // 動態尋找『客戶』名稱對應的 key
         let custKey = Object.keys(row).find(k => {
-          const colDef = sheet.columns.find(c => c.key === k);
+          const colDef = columns.find(c => c.key === k);
           return (colDef ? colDef.title : k).includes('客戶');
         }) || 'customer';
 
-        const customerName = row[custKey] || '未知';
-        if (customerName === '總計') return;
+        const customerName = String(row[custKey] || '未知').trim();
+        if (customerName === '總計' || customerName === '未知') return;
 
-        const currVal = parseNum(row[currMonthKey]);
-        const prevVal = parseNum(row[prevMonthKey]);
+        const currVal = parseNum(row[currMonthCol.key] || row[currMonthCol.title]);
+        const prevVal = parseNum(row[prevMonthCol.key] || row[prevMonthCol.title]);
         const diff = currVal - prevVal;
 
         if (diff > 1000000) {
@@ -830,14 +866,15 @@
       const topGrowth = growthList.slice(0, 3);
       const topDecline = declineList.slice(0, 3);
 
-      const formatCurrency = (num) => num.toLocaleString('en-US');
+      const formatCurrency = (num) => Math.round(num).toLocaleString('en-US');
 
       let html = `
         <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
-          比較區間：<strong style="color: #0f172a;">${currMonthTitle}</strong> 對比 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）- 僅顯示前三名
+          動態比較最新區間：<strong style="color: #0f172a;">${currMonthTitle}</strong> 對比 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）- 僅顯示前後三名
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
           
+          <!-- A. 產能成長區塊 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-up"></i> A. 產能成長 (&gt; +100萬) - 前三名
@@ -862,6 +899,36 @@
             `}
           </div>
 
+          <!-- B. 產能疲軟區塊 -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+            <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
+            </div>
+            ${topDecline.length === 0 ? '<div style="color: #94a3b8; font-size: 13px;">無符合條件的客戶</div>' : `
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
+                    <th style="padding: 6px;">客戶</th>
+                    <th style="padding: 6px; text-align: right;">產值差額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${topDecline.map(item => `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                      <td style="padding: 8px 6px; font-weight: 600; color: #1e293b;">${item.customer}</td>
+                      <td style="padding: 8px 6px; text-align: right; color: #dc2626; font-weight: 600;">${formatCurrency(item.diff)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
