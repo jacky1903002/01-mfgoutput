@@ -606,8 +606,21 @@
       if (curSheet && curSheet.data[rowIndex]) {
         curSheet.data[rowIndex][colKey] = value.trim();
         window.saveToFirebase();
+        // 為了確保即時連動卡片與圖表，觸發重新渲染
+        window.renderMainContent();
       }
     };
+
+    function parseNum(val, isPercentageHint = false) {
+      if (val === undefined || val === null || val === "-" || val === "") return 0;
+      let str = String(val).trim();
+      let hasPercentSign = str.includes('%');
+      let num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+      if (isNaN(num)) return 0;
+      if (hasPercentSign) return num;
+      else if (isPercentageHint && Math.abs(num) <= 1.0 && num !== 0) return num * 100;
+      return num;
+    }
 
     // 4. 圖表動態響應與渲染控制
     window.renderMainContent = function() {
@@ -624,6 +637,16 @@
           <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
         </div>
       `;
+
+      // 判斷工作表類型
+      const hasCustomerCol = sheetColumns.some(c => c.title.includes('客戶') || c.title.includes('總計'));
+      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
+      const isSecondSheet = (!isFirstSheet && hasCustomerCol);
+
+      // 如果是工作表一「產能量能分析」，在表格上方動態插入同期/前月比較卡片
+      if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
+        html += renderSheet1ComparisonCards(currentSheet);
+      }
 
       if (!currentSheet || !currentSheet.data || currentSheet.data.length === 0) {
         html += `<div style="text-align:center; padding: 40px; color:#94a3b8; background:#fff; border-radius:8px; margin-bottom:24px;">目前【${currentSheet.name}】無資料。</div>`;
@@ -642,10 +665,6 @@
         html += `</tbody></table></div>`;
       }
 
-      const hasCustomerCol = sheetColumns.some(c => c.title.includes('客戶') || c.title.includes('總計'));
-      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
-      const isSecondSheet = (!isFirstSheet && hasCustomerCol);
-
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += `<div class="charts-section-title"><i class="fa-solid fa-chart-line"></i> 分析圖表</div><div class="charts-grid">`;
         window.sheet1ChartConfigs.forEach(cp => {
@@ -661,6 +680,9 @@
         });
         html += `</div>`;
       } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
+        // 工作表二：「各客戶累積產值」新增強勁與疲軟類別專屬分析卡片與列表
+        html += renderSheet2StrongWeakCards(currentSheet);
+
         html += `
           <div class="charts-section-title"><i class="fa-solid fa-chart-pie"></i> 各客戶累積產值佔比 (Treemap)</div>
           <div class="chart-page" id="export-area-s2_treemap" style="max-width: 100%; margin-bottom: 30px;">
@@ -694,15 +716,146 @@
       });
     };
 
+    // 工作表一：自動依據最後一個月與前一個月的數據計算差額與百分比的卡片產生器
+    function renderSheet1ComparisonCards(sheet) {
+      const columns = sheet.columns || [];
+      const monthCols = columns.filter(c => c.key !== 'month' && !c.title.includes('月份'));
+      if (monthCols.length < 2) return '';
+
+      const lastCol = monthCols[monthCols.length - 1];
+      const prevCol = monthCols[monthCols.length - 2];
+
+      let valueCardsHtml = '';
+      let qtyCardsHtml = '';
+
+      sheet.data.forEach(row => {
+        const rowName = Object.values(row)[0] || '';
+        const curVal = parseNum(row[lastCol.key]);
+        const preVal = parseNum(row[prevCol.key]);
+        const diff = curVal - preVal;
+        const pct = preVal !== 0 ? ((diff / preVal) * 100).toFixed(1) : '0.0';
+        const isPos = diff >= 0;
+        const badgeColor = isPos ? '#2563eb' : '#dc2626';
+        const sign = isPos ? '+' : '';
+
+        const cardHtml = `
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 6px;">${rowName}</div>
+            <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">${curVal.toLocaleString()} <span style="font-size: 11px; font-weight: normal; color: #94a3b8;">(${lastCol.title})</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+              <span style="color: #64748b;">前月 (${prevCol.title}): ${preVal.toLocaleString()}</span>
+              <span style="font-weight: 600; color: ${badgeColor};">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>
+            </div>
+          </div>
+        `;
+
+        if (rowName.includes('市值') || rowName.includes('產值')) {
+          valueCardsHtml += cardHtml;
+        } else if (rowName.includes('數量') || rowName.includes('PCS')) {
+          qtyCardsHtml += cardHtml;
+        }
+      });
+
+      return `
+        <div style="margin-bottom: 24px;">
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別產值狀況 (NT$)</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${valueCardsHtml || '<div style="color: #94a3b8; font-size: 13px;">無產值類別資料</div>'}
+          </div>
+          
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別生產數量 (PCS)</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${qtyCardsHtml || '<div style="color: #94a3b8; font-size: 13px;">無數量類別資料</div>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // 工作表二：「各客戶累積產值」新增量能強勁與疲軟類別專屬分析卡片與列表
+    function renderSheet2StrongWeakCards(sheet) {
+      const columns = sheet.columns || [];
+      const monthCols = columns.filter(c => {
+        const title = String(c.title || c.key).trim();
+        return !title.includes('客戶') && !title.includes('總計');
+      });
+
+      if (monthCols.length < 2) return '';
+
+      const lastCol = monthCols[monthCols.length - 1];
+      const prevCol = monthCols[monthCols.length - 2];
+
+      let strongList = [];
+      let weakList = [];
+
+      sheet.data.forEach(row => {
+        let custKey = Object.keys(row).find(k => {
+          const colDef = columns.find(c => c.key === k);
+          return (colDef ? colDef.title : k).includes('客戶');
+        }) || 'customer';
+
+        const custName = String(row[custKey] || '未知').trim();
+        if (custName === '總計' || custName === '未知') return;
+
+        const lastVal = parseNum(row[lastCol.key]);
+        const prevVal = parseNum(row[prevCol.key]);
+        const diff = lastVal - prevVal;
+
+        if (diff > 1000000) {
+          strongList.push({ name: custName, diff, lastVal, prevVal });
+        } else if (diff < -1000000) {
+          weakList.push({ name: custName, diff, lastVal, prevVal });
+        }
+      });
+
+      strongList.sort((a, b) => b.diff - a.diff);
+      weakList.sort((a, b) => a.diff - b.diff);
+
+      const renderListItems = (list, isStrong) => {
+        if (list.length === 0) return '<div style="color: #94a3b8; font-size: 13px; padding: 12px 0;">目前無符合條件之類別</div>';
+        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        list.forEach(item => {
+          const color = isStrong ? '#059669' : '#dc2626';
+          const sign = isStrong ? '+' : '';
+          html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <span style="font-weight: 600; color: #1e293b; font-size: 13px;">${item.name}</span>
+              <span style="font-weight: 700; color: ${color}; font-size: 13px;">${sign}${item.diff.toLocaleString()} NT$</span>
+            </div>
+          `;
+        });
+        html += '</div>';
+        return html;
+      };
+
+      return `
+        <div style="margin-bottom: 30px;">
+          <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;"><i class="fa-solid fa-gauge-high"></i> 量能強勁與疲軟類別專屬分析卡片 (${prevCol.title} ➔ ${lastCol.title})</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+            
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-arrow-trend-up"></i> 量能強勁類別 (&gt; +1,000,000)
+              </div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">最後一月減去前一月增加超過 100 萬之客戶</div>
+              ${renderListItems(strongList, true)}
+            </div>
+
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-arrow-trend-down"></i> 量能疲軟類別 (&lt; -1,000,000)
+              </div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">最後一月減去前一月減少超過 100 萬之客戶</div>
+              ${renderListItems(weakList, false)}
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
     function renderTreemap(sheet) {
       const container = document.getElementById('treemap-container');
       if (!container) return;
-
-      function parseNum(val) {
-        if (typeof val === 'number') return val;
-        if (!val) return 0;
-        return parseFloat(String(val).replace(/,/g, '')) || 0;
-      }
 
       let items = sheet.data.map(row => {
         let custKey = Object.keys(row).find(k => {
@@ -745,29 +898,18 @@
       const container = document.getElementById('customer-change-analysis-container');
       if (!container) return;
 
-      function parseNum(val) {
-        if (typeof val === 'number') return val;
-        if (!val) return 0;
-        return parseFloat(String(val).replace(/,/g, '')) || 0;
-      }
-
-      // 解析各種可能的日期字串/欄位名稱為 Timestamp，以便精準排序
       function parseDateToTimestamp(titleOrKey) {
         const str = String(titleOrKey).trim();
-        // 匹配 YYYYMMDD 或 YYYYMM (如 202601)
         const matchDigits = str.match(/^(\d{4})(\d{2})/);
         if (matchDigits) {
           return new Date(parseInt(matchDigits[1], 10), parseInt(matchDigits[2], 10) - 1, 1).getTime();
         }
-        // 匹配 ISO 日期或帶有分隔符的日期 (如 2026-01-01, 2026/01)
         const parsed = Date.parse(str);
         if (!isNaN(parsed)) return parsed;
         return 0;
       }
 
       const columns = sheet.columns || [];
-      
-      // 動態過濾出屬於月份/日期的欄位（排除『客戶』與『總計』）
       const monthCols = columns.filter(c => {
         const title = String(c.title || c.key).trim();
         if (title.includes('客戶') || title.includes('總計') || title.includes('項目')) return false;
@@ -775,7 +917,6 @@
         return ts > 0;
       });
 
-      // 依據實際時間先後順序從小到大排序
       monthCols.sort((a, b) => {
         const tsA = parseDateToTimestamp(a.title || a.key);
         const tsB = parseDateToTimestamp(b.title || b.key);
@@ -787,11 +928,9 @@
         return;
       }
 
-      // 取出最後兩個月份欄位進行增減比較
       const prevMonthCol = monthCols[monthCols.length - 2];
       const currMonthCol = monthCols[monthCols.length - 1];
 
-      // 格式化顯示名稱 (例：取 YYYY-MM)
       const formatMonthDisplay = (col) => {
         const raw = String(col.title || col.key).trim();
         const match = raw.match(/(\d{4})[-/]?(\d{2})/);
@@ -805,7 +944,6 @@
       let declineList = [];
 
       sheet.data.forEach(row => {
-        // 動態尋找『客戶』名稱對應的 key
         let custKey = Object.keys(row).find(k => {
           const colDef = columns.find(c => c.key === k);
           return (colDef ? colDef.title : k).includes('客戶');
@@ -830,7 +968,6 @@
 
       const topGrowth = growthList.slice(0, 3);
       const topDecline = declineList.slice(0, 3);
-
       const formatCurrency = (num) => Math.round(num).toLocaleString('en-US');
 
       let html = `
@@ -839,7 +976,6 @@
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
           
-          <!-- A. 產能成長區塊 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-up"></i> A. 產能成長 (&gt; +100萬) - 前三名
@@ -864,7 +1000,6 @@
             `}
           </div>
 
-          <!-- B. 產能疲軟區塊 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i class="fa-solid fa-arrow-trend-down"></i> B. 產能疲軟 (&lt; -100萬) - 前三名
@@ -929,17 +1064,6 @@
       }
     };
 
-    function parseNum(val, isPercentageHint = false) {
-      if (val === undefined || val === null || val === "-" || val === "") return 0;
-      let str = String(val).trim();
-      let hasPercentSign = str.includes('%');
-      let num = parseFloat(str.replace(/[^0-9.-]/g, ''));
-      if (isNaN(num)) return 0;
-      if (hasPercentSign) return num;
-      else if (isPercentageHint && Math.abs(num) <= 1.0 && num !== 0) return num * 100;
-      return num;
-    }
-
     function buildChartSheet1(config, sheet) {
       const canvas = document.getElementById(`canvas-${config.id}`);
       if (!canvas) return;
@@ -966,7 +1090,7 @@
       const labels = sortedMonthKeys.map(k => (sheet.columns.find(c => c.key === k) || {}).title || k);
 
       const getRowDataByItemName = (itemName, isPercentage = false) => {
-        const targetRow = sheet.data.find(r => (r.item || r.項目 || '').includes(itemName));
+        const targetRow = sheet.data.find(r => (r.item || r.項目 || Object.values(r)[0] || '').includes(itemName));
         if (!targetRow) return sortedMonthKeys.map(() => 0);
         return sortedMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
       };
