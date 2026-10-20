@@ -298,39 +298,6 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 強制清理工作表欄位，將「總計」之後的欄位與無效欄位完整切除
-    function cleanAndEnforceColumns(sheet) {
-      if (!sheet || !sheet.columns) return;
-      let cols = sheet.columns;
-      
-      // 尋找「總計」欄位的位置
-      const totalIdx = cols.findIndex(c => String(c.title || c.key).trim() === '總計' || String(c.title || c.key).trim().includes('總計'));
-      if (totalIdx !== -1) {
-        // 強制刪除總計後面的所有欄位
-        cols = cols.slice(0, totalIdx + 1);
-      }
-
-      // 過濾掉名為 __EMPTY 的空白欄位
-      cols = cols.filter(c => {
-        const t = String(c.title || c.key).trim();
-        return !t.startsWith('__EMPTY');
-      });
-
-      sheet.columns = cols;
-
-      // 同步清理資料列中多餘的 key
-      if (sheet.data) {
-        const validKeys = new Set(cols.map(c => c.key));
-        sheet.data.forEach(row => {
-          Object.keys(row).forEach(k => {
-            if (!validKeys.has(k)) {
-              delete row[k];
-            }
-          });
-        });
-      }
-    }
-
     window.formatDateTime = function(isoString) {
       if (!isoString) return '尚無更新紀錄';
       const d = new Date(isoString);
@@ -345,6 +312,7 @@
       }
     };
 
+    // 1. Firebase 入口認證監聽：未驗證隱藏專案、驗證後顯示
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
       const loginPortal = document.getElementById('login-portal');
@@ -359,11 +327,11 @@
         loginPortal.style.display = "flex";
         appContainer.style.display = "none";
       }
-      window.sheets.forEach(s => cleanAndEnforceColumns(s));
       window.renderTabs();
       window.renderMainContent();
     });
 
+    // 門戶登入驗證
     const handlePortalLogin = () => {
       const email = document.getElementById('portal-email').value.trim();
       const password = document.getElementById('portal-password').value;
@@ -398,8 +366,6 @@
         window.updatedAt = new Date().toISOString();
         window.updateTimeDisplay();
 
-        window.sheets.forEach(s => cleanAndEnforceColumns(s));
-
         await setDoc(docRef, {
           sheets: window.sheets,
           logoUrl: window.logoUrl,
@@ -416,14 +382,30 @@
         const data = docSnap.data();
         if (data.sheets && Array.isArray(data.sheets)) {
           window.sheets = data.sheets.map(s => {
-            const sheetObj = {
+            // 清理掉「總計」後面的所有多餘欄位與對應資料
+            let cols = s.columns || [];
+            const totalIndex = cols.findIndex(c => String(c.title).trim() === '總計');
+            if (totalIndex !== -1) {
+              const validCols = cols.slice(0, totalIndex + 1);
+              const validKeys = new Set(validCols.map(c => c.key));
+              s.data = (s.data || []).map(row => {
+                let newRow = {};
+                Object.keys(row).forEach(k => {
+                  if (validKeys.has(k)) {
+                    newRow[k] = row[k];
+                  }
+                });
+                return newRow;
+              });
+              cols = validCols;
+            }
+
+            return {
               id: s.id,
               name: s.name,
-              columns: s.columns ? JSON.parse(JSON.stringify(s.columns)) : JSON.parse(JSON.stringify(defaultColumns1)),
+              columns: cols,
               data: s.data || []
             };
-            cleanAndEnforceColumns(sheetObj);
-            return sheetObj;
           });
         }
         if (data.logoUrl !== undefined) {
@@ -439,17 +421,23 @@
       window.renderMainContent();
     });
 
+    // 2. 匯出 Excel (導出所有工作表)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
         const wb = XLSX.utils.book_new();
 
         window.sheets.forEach(sheet => {
-          cleanAndEnforceColumns(sheet);
-          const headers = (sheet.columns || []).map(c => c.title);
+          let cols = sheet.columns || [];
+          const totalIndex = cols.findIndex(c => String(c.title).trim() === '總計');
+          if (totalIndex !== -1) {
+            cols = cols.slice(0, totalIndex + 1);
+          }
+
+          const headers = cols.map(c => c.title);
           const rowsData = (sheet.data || []).map(row => {
             const obj = {};
-            (sheet.columns || []).forEach(c => {
+            cols.forEach(c => {
               obj[c.title] = row[c.key] || '';
             });
             return obj;
@@ -465,6 +453,7 @@
       }
     };
 
+    // 3. 一次匯入所有相符的工作表
     document.getElementById('upload-all-excel').addEventListener('change', function(e) {
       if (!window.currentUser) return;
       const file = e.target.files[0];
@@ -483,10 +472,23 @@
               const worksheet = workbook.Sheets[sheetName];
               const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
               if (rawJson.length > 0) {
-                let parsedColumns = Object.keys(rawJson[0]).map(h => ({ key: h, title: h.trim() }));
+                let keys = Object.keys(rawJson[0]);
+                const totalKeyIndex = keys.findIndex(k => String(k).trim() === '總計');
+                if (totalKeyIndex !== -1) {
+                  keys = keys.slice(0, totalKeyIndex + 1);
+                }
+
+                const parsedColumns = keys.map(h => ({ key: h, title: h.trim() }));
+                const parsedData = rawJson.map(row => {
+                  let newRow = {};
+                  keys.forEach(k => {
+                    newRow[k] = row[k] !== undefined ? row[k] : "-";
+                  });
+                  return newRow;
+                });
+
                 matchedSheet.columns = parsedColumns;
-                matchedSheet.data = rawJson;
-                cleanAndEnforceColumns(matchedSheet);
+                matchedSheet.data = parsedData;
                 importedCount++;
               }
             }
@@ -625,7 +627,6 @@
       if (!colName || colName.trim() === "") return;
       const newKey = `col_${Date.now()}`;
       curSheet.columns.push({ key: newKey, title: colName.trim() });
-      cleanAndEnforceColumns(curSheet);
       curSheet.data.forEach(row => { row[newKey] = "0"; });
       window.saveToFirebase();
       window.renderMainContent();
@@ -661,37 +662,18 @@
       return num;
     }
 
-    // 取得工作表二中定義的當月與前月（依據「客戶」欄位的前一個與前前一個欄位）
-    function getSheet2TargetMonths(columns) {
-      const custIdx = columns.findIndex(c => {
-        const title = String(c.title || c.key).trim();
-        return title.includes('客戶');
-      });
-
-      if (custIdx >= 2) {
-        return {
-          prevCol: columns[custIdx - 2],
-          currCol: columns[custIdx - 1]
-        };
-      } else if (custIdx === 1) {
-        return {
-          prevCol: columns[0],
-          currCol: columns[1]
-        };
-      } else {
-        // 預設倒數第二與最後一個月
-        return {
-          prevCol: columns[columns.length - 3] || columns[0],
-          currCol: columns[columns.length - 2] || columns[1]
-        };
-      }
-    }
-
+    // 4. 圖表動態響應與渲染控制
     window.renderMainContent = function() {
       const container = document.getElementById('main-content');
       const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
-      cleanAndEnforceColumns(currentSheet);
-      const sheetColumns = currentSheet.columns || [];
+      
+      let sheetColumns = currentSheet.columns || [];
+      const totalIdx = sheetColumns.findIndex(c => String(c.title).trim() === '總計');
+      if (totalIdx !== -1) {
+        sheetColumns = sheetColumns.slice(0, totalIdx + 1);
+        currentSheet.columns = sheetColumns;
+      }
+
       let html = '';
 
       html += `
@@ -758,7 +740,7 @@
           <div class="charts-section-title" style="margin-top: 30px;"><i class="fa-solid fa-scale-balanced"></i> 客戶產值變化分析</div>
           <div class="chart-page" id="export-area-s2_analysis" style="max-width: 100%; margin-bottom: 30px;">
             <div class="chart-header">
-              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (依客戶欄位前當月與前月比較 - 前三名)</div>
+              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (依『客戶』欄位前一欄當作當月、前前一欄當作前月)</div>
               <button class="btn btn-success" onclick="exportChartToPNG('s2_analysis', '客戶產值變化分析')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
             </div>
             <div id="customer-change-analysis-container" style="width: 100%;"></div>
@@ -778,13 +760,14 @@
       });
     };
 
+    // 工作表一：抓取最後一個欄位當作當月、倒數第二個欄位當作前月
     function renderSheet1ComparisonCards(sheet) {
       const columns = sheet.columns || [];
-      const monthCols = columns.filter(c => c.key !== 'month' && !c.title.includes('月份'));
-      if (monthCols.length < 2) return '';
+      const dataCols = columns.filter(c => c.key !== 'month' && !c.title.includes('月份'));
+      if (dataCols.length < 2) return '';
 
-      const lastCol = monthCols[monthCols.length - 1];
-      const prevCol = monthCols[monthCols.length - 2];
+      const lastCol = dataCols[dataCols.length - 1];
+      const prevCol = dataCols[dataCols.length - 2];
 
       const valueTargetTitles = ["石墨產出市值(NT$)", "鎢鉬鉭產出市值(NT$)", "其他產出市值(NT$)"];
       const qtyTargetTitles = ["石墨產出數量(PCS)", "鎢鉬鉭產出數量(PCS)", "其他產出數量(PCS)"];
@@ -794,14 +777,25 @@
 
       valueTargetTitles.forEach(title => {
         const colDef = columns.find(c => c.title === title);
-        if (!colDef) return;
-
         let curVal = 0;
         let preVal = 0;
-        const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)) || r.item === colDef.key);
-        if (targetRow) {
-          curVal = parseNum(targetRow[lastCol.key]);
-          preVal = parseNum(targetRow[prevCol.key]);
+
+        if (colDef) {
+          sheet.data.forEach(row => {
+            curVal += parseNum(row[colDef.key]);
+          });
+          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)) || r.item === colDef.key);
+          if (targetRow) {
+            curVal = parseNum(targetRow[lastCol.key]);
+            preVal = parseNum(targetRow[prevCol.key]);
+          }
+        } else {
+          // 如果表格是以橫向日期為欄位、縱向為項目的結構，直接尋找列名稱相符者
+          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)));
+          if (targetRow) {
+            curVal = parseNum(targetRow[lastCol.key]);
+            preVal = parseNum(targetRow[prevCol.key]);
+          }
         }
 
         const diff = curVal - preVal;
@@ -824,14 +818,21 @@
 
       qtyTargetTitles.forEach(title => {
         const colDef = columns.find(c => c.title === title);
-        if (!colDef) return;
-
         let curVal = 0;
         let preVal = 0;
-        const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)) || r.item === colDef.key);
-        if (targetRow) {
-          curVal = parseNum(targetRow[lastCol.key]);
-          preVal = parseNum(targetRow[prevCol.key]);
+
+        if (colDef) {
+          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)) || r.item === colDef.key);
+          if (targetRow) {
+            curVal = parseNum(targetRow[lastCol.key]);
+            preVal = parseNum(targetRow[prevCol.key]);
+          }
+        } else {
+          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)));
+          if (targetRow) {
+            curVal = parseNum(targetRow[lastCol.key]);
+            preVal = parseNum(targetRow[prevCol.key]);
+          }
         }
 
         const diff = curVal - preVal;
@@ -856,37 +857,36 @@
         <div style="margin-bottom: 24px;">
           <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別產值狀況 (NT$)</div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            ${valueCardsHtml || '<div style="color: #94a3b8; font-size: 13px;">找不到指定的產值欄位</div>'}
+            ${valueCardsHtml}
           </div>
           
           <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別生產數量 (PCS)</div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            ${qtyCardsHtml || '<div style="color: #94a3b8; font-size: 13px;">找不到指定的數量欄位</div>'}
+            ${qtyCardsHtml}
           </div>
         </div>
       `;
     }
 
-    // 工作表二：「各客戶累積產值」使用客戶欄位前一個作為當月、前前一個作為前月
+    // 工作表二：「各客戶累積產值」強勁與疲軟類別專屬分析卡片與列表
     function renderSheet2StrongWeakCards(sheet) {
       const columns = sheet.columns || [];
-      const { prevCol, currCol } = getSheet2TargetMonths(columns);
-      if (!prevCol || !currCol) return '';
+      const customerColIndex = columns.findIndex(c => String(c.title).trim().includes('客戶'));
+      if (customerColIndex === -1 || customerColIndex < 2) return '';
+
+      const currMonthCol = columns[customerColIndex - 1];
+      const prevMonthCol = columns[customerColIndex - 2];
 
       let strongList = [];
       let weakList = [];
 
       sheet.data.forEach(row => {
-        let custKey = Object.keys(row).find(k => {
-          const colDef = columns.find(c => c.key === k);
-          return (colDef ? colDef.title : k).includes('客戶');
-        }) || 'customer';
-
+        let custKey = columns[customerColIndex].key;
         const custName = String(row[custKey] || '未知').trim();
         if (custName === '總計' || custName === '未知') return;
 
-        const lastVal = parseNum(row[currCol.key]);
-        const prevVal = parseNum(row[prevCol.key]);
+        const lastVal = parseNum(row[currMonthCol.key]);
+        const prevVal = parseNum(row[prevMonthCol.key]);
         const diff = lastVal - prevVal;
 
         if (diff > 1000000) {
@@ -918,14 +918,14 @@
 
       return `
         <div style="margin-bottom: 30px;">
-          <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;"><i class="fa-solid fa-gauge-high"></i> 量能強勁與疲軟類別專屬分析卡片 (${prevCol.title} ➔ ${currCol.title})</div>
+          <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;"><i class="fa-solid fa-gauge-high"></i> 量能強勁與疲軟類別專屬分析卡片 (${prevMonthCol.title} ➔ ${currMonthCol.title})</div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
             
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-arrow-trend-up"></i> 量能強勁類別 (&gt; +1,000,000)
               </div>
-              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">當月減去前月增加超過 100 萬之客戶</div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">當月 (${currMonthCol.title}) 減去前月 (${prevMonthCol.title}) 增加超過 100 萬之客戶</div>
               ${renderListItems(strongList, true)}
             </div>
 
@@ -933,7 +933,7 @@
               <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-arrow-trend-down"></i> 量能疲軟類別 (&lt; -1,000,000)
               </div>
-              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">當月減去前月減少超過 100 萬之客戶</div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">當月 (${currMonthCol.title}) 減去前月 (${prevMonthCol.title}) 減少超過 100 萬之客戶</div>
               ${renderListItems(weakList, false)}
             </div>
 
@@ -988,30 +988,28 @@
       if (!container) return;
 
       const columns = sheet.columns || [];
-      const { prevCol, currCol } = getSheet2TargetMonths(columns);
-
-      if (!prevCol || !currCol) {
-        container.innerHTML = '<div style="color: #64748b; font-size: 13px; padding: 12px 0;">無法定位當月與前月欄位。</div>';
+      const customerColIndex = columns.findIndex(c => String(c.title).trim().includes('客戶'));
+      if (customerColIndex === -1 || customerColIndex < 2) {
+        container.innerHTML = '<div style="color: #64748b; font-size: 13px; padding: 12px 0;">找不到「客戶」欄位或其前方的月份欄位不足。</div>';
         return;
       }
 
-      const prevMonthTitle = prevCol.title;
-      const currMonthTitle = currCol.title;
+      const currMonthCol = columns[customerColIndex - 1];
+      const prevMonthCol = columns[customerColIndex - 2];
+
+      const prevMonthTitle = prevMonthCol.title;
+      const currMonthTitle = currMonthCol.title;
 
       let growthList = [];
       let declineList = [];
 
       sheet.data.forEach(row => {
-        let custKey = Object.keys(row).find(k => {
-          const colDef = columns.find(c => c.key === k);
-          return (colDef ? colDef.title : k).includes('客戶');
-        }) || 'customer';
-
+        let custKey = columns[customerColIndex].key;
         const customerName = String(row[custKey] || '未知').trim();
         if (customerName === '總計' || customerName === '未知') return;
 
-        const currVal = parseNum(row[currCol.key] || row[currCol.title]);
-        const prevVal = parseNum(row[prevCol.key] || row[prevCol.title]);
+        const currVal = parseNum(row[currMonthCol.key]);
+        const prevVal = parseNum(row[prevMonthCol.key]);
         const diff = currVal - prevVal;
 
         if (diff > 1000000) {
@@ -1030,7 +1028,7 @@
 
       let html = `
         <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
-          比較區間：當月 <strong style="color: #0f172a;">${currMonthTitle}</strong> 對比前月 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）- 僅顯示前後三名
+          動態比較區間：當月 <strong style="color: #0f172a;">${currMonthTitle}</strong> 對比 前月 <strong style="color: #0f172a;">${prevMonthTitle}</strong>（單位：NT$）- 僅顯示前後三名
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
           
