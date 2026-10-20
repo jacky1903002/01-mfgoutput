@@ -382,7 +382,6 @@
         const data = docSnap.data();
         if (data.sheets && Array.isArray(data.sheets)) {
           window.sheets = data.sheets.map(s => {
-            // 清理掉「總計」後面的所有多餘欄位與對應資料
             let cols = s.columns || [];
             const totalIndex = cols.findIndex(c => String(c.title).trim() === '總計');
             if (totalIndex !== -1) {
@@ -760,7 +759,7 @@
       });
     };
 
-    // 工作表一：抓取最後一個欄位當作當月、倒數第二個欄位當作前月
+    // 工作表一：抓取最後一個欄位當作當月、倒數第二個欄位當作前月（包含合計項目）
     function renderSheet1ComparisonCards(sheet) {
       const columns = sheet.columns || [];
       const dataCols = columns.filter(c => c.key !== 'month' && !c.title.includes('月份'));
@@ -769,8 +768,18 @@
       const lastCol = dataCols[dataCols.length - 1];
       const prevCol = dataCols[dataCols.length - 2];
 
-      const valueTargetTitles = ["石墨產出市值(NT$)", "鎢鉬鉭產出市值(NT$)", "其他產出市值(NT$)"];
-      const qtyTargetTitles = ["石墨產出數量(PCS)", "鎢鉬鉭產出數量(PCS)", "其他產出數量(PCS)"];
+      const valueTargetTitles = [
+        "石墨產出市值(NT$)", 
+        "鎢鉬鉭產出市值(NT$)", 
+        "其他產出市值(NT$)",
+        "合計產出市值(NT$)"
+      ];
+      const qtyTargetTitles = [
+        "石墨產出數量(PCS)", 
+        "鎢鉬鉭產出數量(PCS)", 
+        "其他產出數量(PCS)",
+        "合計產出數量(PCS)"
+      ];
 
       let valueCardsHtml = '';
       let qtyCardsHtml = '';
@@ -790,7 +799,6 @@
             preVal = parseNum(targetRow[prevCol.key]);
           }
         } else {
-          // 如果表格是以橫向日期為欄位、縱向為項目的結構，直接尋找列名稱相符者
           const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)));
           if (targetRow) {
             curVal = parseNum(targetRow[lastCol.key]);
@@ -803,12 +811,14 @@
         const isPos = diff >= 0;
         const badgeColor = isPos ? '#2563eb' : '#dc2626';
         const sign = isPos ? '+' : '';
+        const isTotalItem = title.includes('合計');
+        const cardStyle = isTotalItem ? 'background: #f0fdf4; border: 1.5px solid #10b981;' : 'background: #ffffff; border: 1px solid #e2e8f0;';
 
         valueCardsHtml += `
-          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
-            <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 6px;">${title}</div>
+          <div style="${cardStyle} border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="font-size: 13px; font-weight: 600; color: ${isTotalItem ? '#047857' : '#64748b'}; margin-bottom: 6px;">${title}</div>
             <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">${curVal.toLocaleString()} <span style="font-size: 11px; font-weight: normal; color: #94a3b8;">(${lastCol.title})</span></div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-top: 1px solid ${isTotalItem ? '#a7f3d0' : '#f1f5f9'}; padding-top: 8px;">
               <span style="color: #64748b;">前月 (${prevCol.title}): ${preVal.toLocaleString()}</span>
               <span style="font-weight: 600; color: ${badgeColor};">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>
             </div>
@@ -840,12 +850,14 @@
         const isPos = diff >= 0;
         const badgeColor = isPos ? '#2563eb' : '#dc2626';
         const sign = isPos ? '+' : '';
+        const isTotalItem = title.includes('合計');
+        const cardStyle = isTotalItem ? 'background: #f0fdf4; border: 1.5px solid #10b981;' : 'background: #ffffff; border: 1px solid #e2e8f0;';
 
         qtyCardsHtml += `
-          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
-            <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 6px;">${title}</div>
+          <div style="${cardStyle} border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="font-size: 13px; font-weight: 600; color: ${isTotalItem ? '#047857' : '#64748b'}; margin-bottom: 6px;">${title}</div>
             <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">${curVal.toLocaleString()} <span style="font-size: 11px; font-weight: normal; color: #94a3b8;">(${lastCol.title})</span></div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-top: 1px solid ${isTotalItem ? '#a7f3d0' : '#f1f5f9'}; padding-top: 8px;">
               <span style="color: #64748b;">前月 (${prevCol.title}): ${preVal.toLocaleString()}</span>
               <span style="font-weight: 600; color: ${badgeColor};">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>
             </div>
@@ -855,12 +867,12 @@
 
       return `
         <div style="margin-bottom: 24px;">
-          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別產值狀況 (NT$)</div>
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別與合計產值狀況 (NT$)</div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
             ${valueCardsHtml}
           </div>
           
-          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別生產數量 (PCS)</div>
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別與合計生產數量 (PCS)</div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
             ${qtyCardsHtml}
           </div>
