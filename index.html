@@ -251,7 +251,7 @@
     window.updatedAt = null;
     window.chartInstances = {};
 
-    // 1. 分頁 1-01 產能量能分析：固定項目清單 (19項)
+    // 1. 分頁 1-01 產能量能分析：固定 19 項項目清單
     const fixedItemNames1 = [
       "石墨產出市值(NT$)",
       "石墨產出數量(PCS)",
@@ -291,7 +291,7 @@
       return { item: name, m_202601: "0", m_202602: "0", m_202603: "0", m_202604: "0", m_202605: "0", m_202606: "0", m_202607: "0", m_202608: "0", total: "0" };
     });
 
-    // 2. 分頁 2-05 各客戶累積產值：固定客戶清單 (13家)
+    // 2. 分頁 2-05 各客戶累積產值：固定 13 家客戶清單
     const fixedCustomerNames2 = [
       "市場件", "Varian", "Applied", "CS", "SEN", "HMI", "AIBT", "ASML", "BHT", "CREATIVE", "MIC", "Intel", "MicroTec"
     ];
@@ -404,6 +404,7 @@
       }
     };
 
+    // 關鍵修復：從 Firebase 讀取資料時，自動修復舊欄位並強制寫入 19 項項目與 13 家客戶
     onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -426,26 +427,37 @@
               cols = validCols;
             }
 
-            // 強制檢查並補齊固定分頁1的項目名稱
+            // 強制校正分頁 1 欄位與 19 項固定項目名稱
             if (s.id === "s1" || s.name.includes("產能量能分析")) {
-              fixedItemNames1.forEach((name, idx) => {
-                if (!s.data[idx]) {
-                  s.data[idx] = { item: name };
-                } else {
-                  s.data[idx].item = name;
-                }
+              if (!cols.some(c => c.key === 'item' || c.title === '項目')) {
+                cols.unshift({ key: "item", title: "項目" });
+              }
+              const itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+
+              let newRows = fixedItemNames1.map((name, idx) => {
+                let oldRow = s.data[idx] || {};
+                oldRow[itemColKey] = name;
+                return oldRow;
               });
+              s.data = newRows;
             }
 
-            // 強制檢查並補齊固定分頁2的客戶名稱
+            // 強制校正分頁 2 欄位與 13 家固定客戶名稱
             if (s.id === "s2" || s.name.includes("各客戶累積產值")) {
-              fixedCustomerNames2.forEach((cust, idx) => {
-                let custKey = s.columns.find(c => c.title.includes('客戶'))?.key || 'customer';
-                if (!s.data[idx]) {
-                  s.data[idx] = {};
-                }
-                s.data[idx][custKey] = cust;
+              let custCol = cols.find(c => c.title.includes('客戶'));
+              if (!custCol) {
+                const totalIdx = cols.findIndex(c => c.title.includes('總計'));
+                custCol = { key: "customer", title: "客戶" };
+                if (totalIdx !== -1) cols.splice(totalIdx, 0, custCol);
+                else cols.push(custCol);
+              }
+
+              let newRows = fixedCustomerNames2.map((cust, idx) => {
+                let oldRow = s.data[idx] || {};
+                oldRow[custCol.key] = cust;
+                return oldRow;
               });
+              s.data = newRows;
             }
 
             return {
@@ -469,7 +481,7 @@
       window.renderMainContent();
     });
 
-    // 匯出 Excel (強制確保帶入固定 19 項與 13 家客戶名稱，並套用指定格式)
+    // 匯出 Excel (強制包含 19 項項目與 13 家客戶)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -485,30 +497,30 @@
           const isFirstSheet = (sheet.id === "s1" || sheet.name.includes("產能量能分析"));
           const isSecondSheet = (sheet.id === "s2" || sheet.name.includes("各客戶累積產值"));
 
-          // 強制校正導出的資料列，確保第一分頁帶入 19 項固定項目、第二分頁帶入 13 家固定客戶
           let exportRowsData = JSON.parse(JSON.stringify(sheet.data || []));
+
+          // 確保匯出時 19 項項目完全寫入
           if (isFirstSheet) {
+            let itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
             exportRowsData = fixedItemNames1.map((name, idx) => {
-              let existingRow = exportRowsData[idx] || {};
-              existingRow.item = name;
+              let row = exportRowsData[idx] || {};
+              row[itemColKey] = name;
               cols.forEach(c => {
-                if (c.key !== 'item') {
-                  if (existingRow[c.key] === undefined) existingRow[c.key] = "0";
-                }
+                if (c.key !== itemColKey && row[c.key] === undefined) row[c.key] = "0";
               });
-              return existingRow;
+              return row;
             });
-          } else if (isSecondSheet) {
-            const custKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
+          } 
+          // 確保匯出時 13 家客戶完全寫入
+          else if (isSecondSheet) {
+            let custColKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
             exportRowsData = fixedCustomerNames2.map((cust, idx) => {
-              let existingRow = exportRowsData[idx] || {};
-              existingRow[custKey] = cust;
+              let row = exportRowsData[idx] || {};
+              row[custColKey] = cust;
               cols.forEach(c => {
-                if (c.key !== custKey) {
-                  if (existingRow[c.key] === undefined) existingRow[c.key] = "0";
-                }
+                if (c.key !== custColKey && row[c.key] === undefined) row[c.key] = "0";
               });
-              return existingRow;
+              return row;
             });
           }
 
@@ -523,7 +535,7 @@
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
 
-          // 套用指定儲存格格式 (日期 Jan-23、數字數值小數點 0 位、百分比到小數點第二位)
+          // 套用指定格式 (日期 Jan-23、數字數值小數點 0 位、百分比到小數點 2 位)
           const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
           for (let R = range.s.r + 1; R <= range.e.r; ++R) {
             for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -538,19 +550,19 @@
                 if (!isNaN(d.getTime())) {
                   cell.t = 'd';
                   cell.v = d;
-                  cell.z = 'mmm-yy'; // 顯示成 Jan-23 格式
+                  cell.z = 'mmm-yy';
                 }
               } else if (colTitle.includes('百分比') || colTitle.includes('/') || String(val).includes('%')) {
                 let num = parseNum(val, true);
                 cell.t = 'n';
                 cell.v = num / 100;
-                cell.z = '0.00%'; // 百分比到小數點第二位
+                cell.z = '0.00%';
               } else {
                 let num = parseNum(val);
-                if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '' && String(val).trim() !== '0') {
+                if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '') {
                   cell.t = 'n';
                   cell.v = num;
-                  cell.z = '#,##0'; // 數字數值到小數點 0 位
+                  cell.z = '#,##0';
                 }
               }
             }
@@ -621,7 +633,7 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 一鍵匯出所有頁面圖表成 PDF 功能
+    // 一鍵匯出所有頁面圖表成 PDF
     window.exportAllChartsToPDF = async function() {
       try {
         if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
@@ -882,7 +894,7 @@
         currentSheet.data.forEach((row, rIdx) => {
           html += `<tr>`;
           sheetColumns.forEach(col => {
-            const isProtectedCol = (isFirstSheet && col.key === 'item') || (isSecondSheet && col.title.includes('客戶'));
+            const isProtectedCol = (isFirstSheet && (col.key === 'item' || col.title === '項目')) || (isSecondSheet && col.title.includes('客戶'));
             if (isProtectedCol) {
               html += `<td style="background: #f8fafc; font-weight: 600; color: #1e293b;">${row[col.key] || '-'}</td>`;
             } else {
@@ -969,7 +981,8 @@
       let qtyCardsHtml = '';
 
       valueTargetTitles.forEach(title => {
-        const targetRow = sheet.data.find(r => r.item === title);
+        const itemColKey = columns.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+        const targetRow = sheet.data.find(r => r[itemColKey] === title);
         let curVal = targetRow ? parseNum(targetRow[lastCol.key]) : 0;
         let preVal = targetRow ? parseNum(targetRow[prevCol.key]) : 0;
 
@@ -994,7 +1007,8 @@
       });
 
       qtyTargetTitles.forEach(title => {
-        const targetRow = sheet.data.find(r => r.item === title);
+        const itemColKey = columns.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+        const targetRow = sheet.data.find(r => r[itemColKey] === title);
         let curVal = targetRow ? parseNum(targetRow[lastCol.key]) : 0;
         let preVal = targetRow ? parseNum(targetRow[prevCol.key]) : 0;
 
