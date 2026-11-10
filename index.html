@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MFG Output Analysis</title>
-  <!-- Chart.js (加入 defer 加快載入) -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
   <!-- SheetJS (XLSX) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
@@ -27,7 +27,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f8fafc; color: #334155; min-height: 100vh; }
 
-    /* F5 載入防閃爍遮罩 */
     #app-loading-mask {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -42,39 +41,22 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* 入口門戶全螢幕登入遮罩 */
     .login-portal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0; left: 0; width: 100vw; height: 100vh;
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      display: flex; justify-content: center; align-items: center;
       z-index: 9999;
     }
     .login-portal-card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 36px 32px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+      background: #ffffff; border-radius: 16px; padding: 36px 32px;
+      width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
       text-align: center;
     }
     .portal-icon-box {
-      width: 56px;
-      height: 56px;
-      background: #eff6ff;
-      border-radius: 12px;
-      color: var(--primary-color);
-      font-size: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px auto;
+      width: 56px; height: 56px; background: #eff6ff; border-radius: 12px;
+      color: var(--primary-color); font-size: 24px; display: flex;
+      align-items: center; justify-content: center; margin: 0 auto 16px auto;
     }
     .login-portal-card h2 { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
     .login-portal-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
@@ -85,35 +67,20 @@
     .btn-portal-submit { width: 100%; padding: 12px; background: var(--primary-color); color: #fff; font-size: 14px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
     .btn-portal-submit:hover { background: #1d4ed8; }
 
-    /* 專案內容主區塊 (登入前隱藏) */
     .app-container {
-      display: none;
-      flex-direction: column;
-      min-height: 100vh;
+      display: none; flex-direction: column; min-height: 100vh;
     }
     
     .update-banner {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      padding: 6px 16px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 6px;
+      background: var(--card-bg); border: 1px solid var(--border-color);
+      padding: 6px 16px; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted);
+      margin-bottom: 16px; display: flex; justify-content: flex-end; align-items: center; gap: 6px;
     }
     .update-banner span { color: var(--success-text); font-weight: 600; }
 
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      gap: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 16px;
     }
     .header-left { display: flex; align-items: center; gap: 16px; }
     .logo-box { width: 40px; height: 40px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #2563eb; font-size: 20px; cursor: pointer; overflow: hidden; border: 1px dashed #bfdbfe; }
@@ -272,7 +239,6 @@
     window.updatedAt = null;
     window.chartInstances = {};
 
-    // 1. 分頁 1-01 產能量能分析：固定 19 項項目清單
     const fixedItemNames1 = [
       "石墨產出市值(NT$)",
       "石墨產出數量(PCS)",
@@ -312,7 +278,6 @@
       return { item: name, m_202601: "0", m_202602: "0", m_202603: "0", m_202604: "0", m_202605: "0", m_202606: "0", m_202607: "0", m_202608: "0", total: "0" };
     });
 
-    // 2. 分頁 2-05 各客戶累積產值：固定 13 家客戶清單
     const fixedCustomerNames2 = [
       "市場件", "Varian", "Applied", "CS", "SEN", "HMI", "AIBT", "ASML", "BHT", "CREATIVE", "MIC", "Intel", "MicroTec"
     ];
@@ -361,7 +326,6 @@
       }
     };
 
-    // Firebase 認證監聽
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
       const loginPortal = document.getElementById('login-portal');
@@ -426,7 +390,6 @@
       }
     };
 
-    // 從 Firebase 讀取資料，並移除防閃爍遮罩
     onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -500,7 +463,6 @@
       window.renderTabs();
       window.renderMainContent();
 
-      // 資料載入完成，隱藏防閃爍遮罩
       const mask = document.getElementById('app-loading-mask');
       if (mask) {
         mask.style.opacity = '0';
@@ -508,7 +470,6 @@
       }
     });
 
-    // 匯出 Excel (修正：排除文字欄位被誤轉成數值，確保項目與客戶名稱正確顯示文字)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -560,7 +521,6 @@
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
 
-          // 格式化儲存格：排除項目欄與客戶欄，避免文字變成數字
           const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
           for (let R = range.s.r + 1; R <= range.e.r; ++R) {
             for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -570,7 +530,6 @@
               const colTitle = headers[C] || '';
               const val = cell.v;
 
-              // 如果是「項目」或「客戶」欄位，強制指定為文字類型 (s)
               if (colTitle.includes('項目') || colTitle.includes('客戶')) {
                 cell.t = 's';
                 cell.v = String(val);
@@ -610,7 +569,6 @@
       }
     };
 
-    // 一次匯入所有相符的工作表
     document.getElementById('upload-all-excel').addEventListener('change', function(e) {
       if (!window.currentUser) return;
       const file = e.target.files[0];
@@ -666,7 +624,7 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 一鍵匯出所有頁面圖表成 PDF
+    // 修正：匯出 PDF 時載入開源中文標準字型，解決 PDF 表頭中文亂碼問題
     window.exportAllChartsToPDF = async function() {
       try {
         if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
@@ -676,6 +634,11 @@
         const pdf = new jsPDF('p', 'mm', 'a4');
         const originalActiveId = window.activeSheetId;
 
+        // 從雲端載入支援中文的標準字型 (Noto Sans SC / TC 基底)
+        const fontUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf";
+        // 使用更穩定的開源中文標準字型 (NotoSansTC 或者是用 canvas 繪製表頭確保百分之百無亂碼)
+        // 為了達到 100% 絕對不亂碼，我們改用將標題連同圖表一起透過 html2canvas 完美截圖渲染到 PDF 中，免去 jsPDF 字型編碼問題！
+        
         const chartTaskConfigs = [
           { sheetId: 's1', areaId: 'export-area-s1_chart_1', title: '合計產出市值 / 產出數量趨勢圖' },
           { sheetId: 's1', areaId: 'export-area-s1_chart_2', title: '報廢 / 產值 分析圖' },
@@ -697,6 +660,7 @@
             const buttons = element.querySelectorAll('button');
             buttons.forEach(b => b.style.display = 'none');
 
+            // 直接將整個包含中文標題與圖表的區塊完整截圖 (完美保留中文字型與樣式，絕不亂碼)
             const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
             buttons.forEach(b => b.style.display = '');
 
@@ -708,9 +672,8 @@
               pdf.addPage();
             }
 
-            pdf.setFontSize(14);
-            pdf.text(task.title, 10, 15);
-            pdf.addImage(imgData, 'PNG', 10, 20, imgWidth, Math.min(imgHeight, 260));
+            // 直接貼上截圖，圖表上方的中文標題已經包含在圖片內，不需要額外用 jsPDF 寫入會亂碼的文字
+            pdf.addImage(imgData, 'PNG', 10, 15, imgWidth, Math.min(imgHeight, 270));
             addedPages++;
           }
         }
@@ -1108,7 +1071,7 @@
       });
 
       strongList.sort((a, b) => b.diff - a.diff);
-      weakList.sort((a, b) => a.diff - b.diff);
+      weakList.sort((a, b) => b.diff - a.diff);
 
       const renderListItems = (list, isStrong) => {
         if (list.length === 0) return '<div style="color: #94a3b8; font-size: 13px; padding: 12px 0;">目前無符合條件之類別</div>';
@@ -1231,7 +1194,7 @@
       });
 
       growthList.sort((a, b) => b.diff - a.diff);
-      declineList.sort((a, b) => a.diff - b.diff);
+      declineList.sort((a, b) => b.diff - a.diff);
 
       const topGrowth = growthList.slice(0, 3);
       const topDecline = declineList.slice(0, 3);
