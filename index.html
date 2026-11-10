@@ -27,6 +27,21 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f8fafc; color: #334155; min-height: 100vh; }
 
+    /* F5 載入防閃爍遮罩 */
+    #app-loading-mask {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #f8fafc; z-index: 9998;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      color: #64748b; font-size: 14px; gap: 12px;
+      transition: opacity 0.3s ease;
+    }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid #cbd5e1; border-top-color: var(--primary-color);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* 入口門戶全螢幕登入遮罩 */
     .login-portal-overlay {
       position: fixed;
@@ -151,8 +166,14 @@
 </head>
 <body>
 
+  <!-- 防閃爍載入遮罩 -->
+  <div id="app-loading-mask">
+    <div class="spinner"></div>
+    <div>系統資料載入中，請稍候...</div>
+  </div>
+
   <!-- 入口全螢幕 Firebase 登入遮罩 -->
-  <div class="login-portal-overlay" id="login-portal">
+  <div class="login-portal-overlay" id="login-portal" style="display: none;">
     <div class="login-portal-card">
       <div class="portal-icon-box">
         <i class="fa-solid fa-chart-line"></i>
@@ -354,6 +375,7 @@
       } else {
         loginPortal.style.display = "flex";
         appContainer.style.display = "none";
+        document.getElementById('app-loading-mask').style.display = 'none';
       }
       window.renderTabs();
       window.renderMainContent();
@@ -404,7 +426,7 @@
       }
     };
 
-    // 關鍵修復：從 Firebase 讀取資料時，自動修復舊欄位並強制寫入 19 項項目與 13 家客戶
+    // 從 Firebase 讀取資料，並移除防閃爍遮罩
     onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -427,7 +449,6 @@
               cols = validCols;
             }
 
-            // 強制校正分頁 1 欄位與 19 項固定項目名稱
             if (s.id === "s1" || s.name.includes("產能量能分析")) {
               if (!cols.some(c => c.key === 'item' || c.title === '項目')) {
                 cols.unshift({ key: "item", title: "項目" });
@@ -442,7 +463,6 @@
               s.data = newRows;
             }
 
-            // 強制校正分頁 2 欄位與 13 家固定客戶名稱
             if (s.id === "s2" || s.name.includes("各客戶累積產值")) {
               let custCol = cols.find(c => c.title.includes('客戶'));
               if (!custCol) {
@@ -479,9 +499,16 @@
       }
       window.renderTabs();
       window.renderMainContent();
+
+      // 資料載入完成，隱藏防閃爍遮罩
+      const mask = document.getElementById('app-loading-mask');
+      if (mask) {
+        mask.style.opacity = '0';
+        setTimeout(() => mask.style.display = 'none', 300);
+      }
     });
 
-    // 匯出 Excel (強制包含 19 項項目與 13 家客戶)
+    // 匯出 Excel (修正：排除文字欄位被誤轉成數值，確保項目與客戶名稱正確顯示文字)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -499,9 +526,10 @@
 
           let exportRowsData = JSON.parse(JSON.stringify(sheet.data || []));
 
-          // 確保匯出時 19 項項目完全寫入
+          let itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+          let custColKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
+
           if (isFirstSheet) {
-            let itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
             exportRowsData = fixedItemNames1.map((name, idx) => {
               let row = exportRowsData[idx] || {};
               row[itemColKey] = name;
@@ -510,10 +538,7 @@
               });
               return row;
             });
-          } 
-          // 確保匯出時 13 家客戶完全寫入
-          else if (isSecondSheet) {
-            let custColKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
+          } else if (isSecondSheet) {
             exportRowsData = fixedCustomerNames2.map((cust, idx) => {
               let row = exportRowsData[idx] || {};
               row[custColKey] = cust;
@@ -535,7 +560,7 @@
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
 
-          // 套用指定格式 (日期 Jan-23、數字數值小數點 0 位、百分比到小數點 2 位)
+          // 格式化儲存格：排除項目欄與客戶欄，避免文字變成數字
           const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
           for (let R = range.s.r + 1; R <= range.e.r; ++R) {
             for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -544,6 +569,14 @@
               if (!cell) continue;
               const colTitle = headers[C] || '';
               const val = cell.v;
+
+              // 如果是「項目」或「客戶」欄位，強制指定為文字類型 (s)
+              if (colTitle.includes('項目') || colTitle.includes('客戶')) {
+                cell.t = 's';
+                cell.v = String(val);
+                delete cell.z;
+                continue;
+              }
 
               if (colTitle.includes('月份') || colTitle.includes('時間') || String(val).match(/^\d{4}[/-]\d{1,2}([/-]\d{1,2})?$/)) {
                 let d = new Date(val);
