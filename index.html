@@ -151,7 +151,7 @@
 </head>
 <body>
 
-  <!-- 1. 入口全螢幕 Firebase 登入遮罩 -->
+  <!-- 入口全螢幕 Firebase 登入遮罩 -->
   <div class="login-portal-overlay" id="login-portal">
     <div class="login-portal-card">
       <div class="portal-icon-box">
@@ -251,7 +251,7 @@
     window.updatedAt = null;
     window.chartInstances = {};
 
-    // 1. 分頁 1-01 產能量能分析：固定項目清單
+    // 1. 分頁 1-01 產能量能分析：固定項目清單 (19項)
     const fixedItemNames1 = [
       "石墨產出市值(NT$)",
       "石墨產出數量(PCS)",
@@ -287,12 +287,11 @@
       { key: "total", title: "總計" }
     ];
 
-    const defaultData1 = fixedItemNames1.map((name, idx) => {
-      let row = { item: name, m_202601: "0", m_202602: "0", m_202603: "0", m_202604: "0", m_202605: "0", m_202606: "0", m_202607: "0", m_202608: "0", total: "0" };
-      return row;
+    const defaultData1 = fixedItemNames1.map((name) => {
+      return { item: name, m_202601: "0", m_202602: "0", m_202603: "0", m_202604: "0", m_202605: "0", m_202606: "0", m_202607: "0", m_202608: "0", total: "0" };
     });
 
-    // 2. 分頁 2-05 各客戶累積產值：固定客戶清單
+    // 2. 分頁 2-05 各客戶累積產值：固定客戶清單 (13家)
     const fixedCustomerNames2 = [
       "市場件", "Varian", "Applied", "CS", "SEN", "HMI", "AIBT", "ASML", "BHT", "CREATIVE", "MIC", "Intel", "MicroTec"
     ];
@@ -470,7 +469,7 @@
       window.renderMainContent();
     });
 
-    // 匯出 Excel (支援指定格式：日期 Jan-23、數字數值小數點 0 位、百分比 2 位)
+    // 匯出 Excel (強制確保帶入固定 19 項與 13 家客戶名稱，並套用指定格式)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -483,18 +482,49 @@
             cols = cols.slice(0, totalIndex + 1);
           }
 
+          const isFirstSheet = (sheet.id === "s1" || sheet.name.includes("產能量能分析"));
+          const isSecondSheet = (sheet.id === "s2" || sheet.name.includes("各客戶累積產值"));
+
+          // 強制校正導出的資料列，確保第一分頁帶入 19 項固定項目、第二分頁帶入 13 家固定客戶
+          let exportRowsData = JSON.parse(JSON.stringify(sheet.data || []));
+          if (isFirstSheet) {
+            exportRowsData = fixedItemNames1.map((name, idx) => {
+              let existingRow = exportRowsData[idx] || {};
+              existingRow.item = name;
+              cols.forEach(c => {
+                if (c.key !== 'item') {
+                  if (existingRow[c.key] === undefined) existingRow[c.key] = "0";
+                }
+              });
+              return existingRow;
+            });
+          } else if (isSecondSheet) {
+            const custKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
+            exportRowsData = fixedCustomerNames2.map((cust, idx) => {
+              let existingRow = exportRowsData[idx] || {};
+              existingRow[custKey] = cust;
+              cols.forEach(c => {
+                if (c.key !== custKey) {
+                  if (existingRow[c.key] === undefined) existingRow[c.key] = "0";
+                }
+              });
+              return existingRow;
+            });
+          }
+
           const headers = cols.map(c => c.title);
-          const rowsData = (sheet.data || []).map(row => {
+          const rowsData = exportRowsData.map(row => {
             const obj = {};
             cols.forEach(c => {
-              obj[c.title] = row[c.key] || '';
+              obj[c.title] = row[c.key] !== undefined ? row[c.key] : '';
             });
             return obj;
           });
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
 
-          const range = XLSX.utils.decode_range(ws['!ref']);
+          // 套用指定儲存格格式 (日期 Jan-23、數字數值小數點 0 位、百分比到小數點第二位)
+          const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
           for (let R = range.s.r + 1; R <= range.e.r; ++R) {
             for (let C = range.s.c; C <= range.e.c; ++C) {
               const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
@@ -508,19 +538,19 @@
                 if (!isNaN(d.getTime())) {
                   cell.t = 'd';
                   cell.v = d;
-                  cell.z = 'mmm-yy';
+                  cell.z = 'mmm-yy'; // 顯示成 Jan-23 格式
                 }
               } else if (colTitle.includes('百分比') || colTitle.includes('/') || String(val).includes('%')) {
                 let num = parseNum(val, true);
                 cell.t = 'n';
                 cell.v = num / 100;
-                cell.z = '0.00%';
+                cell.z = '0.00%'; // 百分比到小數點第二位
               } else {
                 let num = parseNum(val);
-                if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '') {
+                if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '' && String(val).trim() !== '0') {
                   cell.t = 'n';
                   cell.v = num;
-                  cell.z = '#,##0';
+                  cell.z = '#,##0'; // 數字數值到小數點 0 位
                 }
               }
             }
@@ -824,7 +854,6 @@
       const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
       const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name.includes("各客戶累積產值"));
 
-      // 若為固定格式分頁，隱藏增減列按鈕以保護固定項目與客戶名稱完整
       if (!isFirstSheet && !isSecondSheet) {
         html += `
           <div class="table-toolbar">
@@ -853,7 +882,6 @@
         currentSheet.data.forEach((row, rIdx) => {
           html += `<tr>`;
           sheetColumns.forEach(col => {
-            // 若為第一欄(項目)或是倒數第二欄(客戶)，不可編輯以確保固定文字完整
             const isProtectedCol = (isFirstSheet && col.key === 'item') || (isSecondSheet && col.title.includes('客戶'));
             if (isProtectedCol) {
               html += `<td style="background: #f8fafc; font-weight: 600; color: #1e293b;">${row[col.key] || '-'}</td>`;
