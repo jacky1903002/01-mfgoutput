@@ -251,16 +251,50 @@
     window.updatedAt = null;
     window.chartInstances = {};
 
+    // 1. 分頁 1-01 產能量能分析：固定項目清單
+    const fixedItemNames1 = [
+      "石墨產出市值(NT$)",
+      "石墨產出數量(PCS)",
+      "鎢鉬鉭產出市值(NT$)",
+      "鎢鉬鉭產出數量(PCS)",
+      "其他產出市值(NT$)",
+      "其他產出數量(PCS)",
+      "合計產出市值(NT$)",
+      "合計產出數量(PCS)",
+      "製造營收比例(%)",
+      "委外產值(NT$)",
+      "委外佔營收比例(%)",
+      "加班費(NT$)",
+      "加班時數(hrs)",
+      "總時數(hrs)",
+      "加班費/產值",
+      "刀具費(NT$)",
+      "刀具費/產值",
+      "報廢金額(NT$)",
+      "報廢/產值"
+    ];
+
     const defaultColumns1 = [
-      { key: "month", title: "月份/時間" },
-      { key: "item_0", title: "石墨產出市值(NT$)" },
-      { key: "item_1", title: "石墨產出數量(PCS)" },
-      { key: "item_2", title: "鎢鉬鉭產出市值(NT$)" },
-      { key: "item_3", title: "鎢鉬鉭產出數量(PCS)" },
-      { key: "item_4", title: "其他產出市值(NT$)" },
-      { key: "item_5", title: "其他產出數量(PCS)" },
-      { key: "item_6", title: "合計產出市值(NT$)" },
-      { key: "item_7", title: "合計產出數量(PCS)" }
+      { key: "item", title: "項目" },
+      { key: "m_202601", title: "Jan-26" },
+      { key: "m_202602", title: "Feb-26" },
+      { key: "m_202603", title: "Mar-26" },
+      { key: "m_202604", title: "Apr-26" },
+      { key: "m_202605", title: "May-26" },
+      { key: "m_202606", title: "Jun-26" },
+      { key: "m_202607", title: "Jul-26" },
+      { key: "m_202608", title: "Aug-26" },
+      { key: "total", title: "總計" }
+    ];
+
+    const defaultData1 = fixedItemNames1.map((name, idx) => {
+      let row = { item: name, m_202601: "0", m_202602: "0", m_202603: "0", m_202604: "0", m_202605: "0", m_202606: "0", m_202607: "0", m_202608: "0", total: "0" };
+      return row;
+    });
+
+    // 2. 分頁 2-05 各客戶累積產值：固定客戶清單
+    const fixedCustomerNames2 = [
+      "市場件", "Varian", "Applied", "CS", "SEN", "HMI", "AIBT", "ASML", "BHT", "CREATIVE", "MIC", "Intel", "MicroTec"
     ];
 
     const defaultColumns2 = [
@@ -276,25 +310,13 @@
       { key: "total", title: "總計" }
     ];
 
-    const defaultData2 = [
-      { m_202601: "59,998,845", m_202602: "40,586,297", m_202603: "56,745,387", m_202604: "40,272,111", m_202605: "51,960,755", m_202606: "53,333,500", m_202607: "70,194,738", m_202608: "60,404,056", customer: "市場件", total: "433,495,689" },
-      { m_202601: "47,521,142", m_202602: "43,528,129", m_202603: "61,439,850", m_202604: "52,870,713", m_202605: "53,907,642", m_202606: "46,702,936", m_202607: "71,721,752", m_202608: "54,713,401", customer: "Varian", total: "432,405,565" },
-      { m_202601: "27,314,812", m_202602: "14,748,942", m_202603: "27,444,215", m_202604: "22,028,483", m_202605: "22,237,457", m_202606: "21,506,243", m_202607: "32,319,562", m_202608: "30,945,240", customer: "Applied", total: "198,544,954" },
-      { m_202601: "5,848,179", m_202602: "9,134,495", m_202603: "1,880,801", m_202604: "979,043", m_202605: "11,466,204", m_202606: "6,065,663", m_202607: "11,391,269", m_202608: "9,345,916", customer: "CS", total: "64,923,020" },
-      { m_202601: "4,282,265", m_202602: "2,521,749", m_202603: "6,905,717", m_202604: "3,936,601", m_202605: "6,883,690", m_202606: "4,838,257", m_202607: "13,492,273", m_202608: "6,583,415", customer: "SEN", total: "49,443,967" },
-      { m_202601: "4,278,106", m_202602: "3,283,019", m_202603: "3,286,536", m_202604: "6,482,403", m_202605: "3,169,527", m_202606: "5,548,258", m_202607: "7,797,439", m_202608: "8,649,582", customer: "HMI", total: "42,494,870" },
-      { m_202601: "3,319,327", m_202602: "4,622,993", m_202603: "3,532,799", m_202604: "3,910,604", m_202605: "5,085,243", m_202606: "3,965,133", m_202607: "6,796,389", m_202608: "5,569,295", customer: "AIBT", total: "36,801,783" },
-      { m_202601: "3,770,924", m_202602: "2,723,001", m_202603: "2,982,465", m_202604: "3,824,346", m_202605: "3,440,279", m_202606: "5,256,601", m_202607: "6,760,825", m_202608: "6,602,972", customer: "ASML", total: "35,361,413" },
-      { m_202601: "4,118,884", m_202602: "2,267,000", m_202603: "1,572,719", m_202604: "4,568,639", m_202605: "2,648,280", m_202606: "2,875,481", m_202607: "4,312,100", m_202608: "4,078,371", customer: "BHT", total: "26,441,474" },
-      { m_202601: "500,120", m_202602: "64,528", m_202603: "75,047", m_202604: "13224", m_202605: "543,994", m_202606: "44,502", m_202607: "97,628", m_202608: "521,446", customer: "CREATIVE", total: "1,860,489" },
-      { m_202601: "129,000", m_202602: "150,700", m_202603: "38,000", m_202604: "0", m_202605: "218,100", m_202606: "80,800", m_202607: "258,950", m_202608: "289,350", customer: "MIC", total: "1,164,900" },
-      { m_202601: "381,654", m_202602: "0", m_202603: "92,563", m_202604: "211703", m_202605: "142,968", m_202606: "0", m_202607: "0", m_202608: "58,550", customer: "Intel", total: "887,438" },
-      { m_202601: "0", m_202602: "16,817", m_202603: "29,885", m_202604: "28827", m_202605: "2,045", m_202606: "0", m_202607: "27,470", m_202608: "45,272", customer: "MicroTec", total: "150,316" }
-    ];
+    const defaultData2 = fixedCustomerNames2.map(cust => ({
+      m_202601: "0", m_202602: "0", m_202603: "0", m_202604: "0", m_202605: "0", m_202606: "0", m_202607: "0", m_202608: "0", customer: cust, total: "0"
+    }));
 
     window.sheets = [
-      { id: "s1", name: "產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: [] },
-      { id: "s2", name: "各客戶累積產值", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: JSON.parse(JSON.stringify(defaultData2)) }
+      { id: "s1", name: "01產能量能分析", columns: JSON.parse(JSON.stringify(defaultColumns1)), data: JSON.parse(JSON.stringify(defaultData1)) },
+      { id: "s2", name: "05各客戶累積產值", columns: JSON.parse(JSON.stringify(defaultColumns2)), data: JSON.parse(JSON.stringify(defaultData2)) }
     ];
     window.activeSheetId = "s1";
 
@@ -405,6 +427,28 @@
               cols = validCols;
             }
 
+            // 強制檢查並補齊固定分頁1的項目名稱
+            if (s.id === "s1" || s.name.includes("產能量能分析")) {
+              fixedItemNames1.forEach((name, idx) => {
+                if (!s.data[idx]) {
+                  s.data[idx] = { item: name };
+                } else {
+                  s.data[idx].item = name;
+                }
+              });
+            }
+
+            // 強制檢查並補齊固定分頁2的客戶名稱
+            if (s.id === "s2" || s.name.includes("各客戶累積產值")) {
+              fixedCustomerNames2.forEach((cust, idx) => {
+                let custKey = s.columns.find(c => c.title.includes('客戶'))?.key || 'customer';
+                if (!s.data[idx]) {
+                  s.data[idx] = {};
+                }
+                s.data[idx][custKey] = cust;
+              });
+            }
+
             return {
               id: s.id,
               name: s.name,
@@ -450,7 +494,6 @@
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
 
-          // 套用指定儲存格格式 (日期 Jan-23、數值到小數點0位、百分比到小數點2位)
           const range = XLSX.utils.decode_range(ws['!ref']);
           for (let R = range.s.r + 1; R <= range.e.r; ++R) {
             for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -465,19 +508,19 @@
                 if (!isNaN(d.getTime())) {
                   cell.t = 'd';
                   cell.v = d;
-                  cell.z = 'mmm-yy'; // 顯示成 Jan-23 格式
+                  cell.z = 'mmm-yy';
                 }
               } else if (colTitle.includes('百分比') || colTitle.includes('/') || String(val).includes('%')) {
                 let num = parseNum(val, true);
                 cell.t = 'n';
                 cell.v = num / 100;
-                cell.z = '0.00%'; // 百分比到小數點第二位
+                cell.z = '0.00%';
               } else {
                 let num = parseNum(val);
                 if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '') {
                   cell.t = 'n';
                   cell.v = num;
-                  cell.z = '#,##0'; // 數字數值到小數點 0 位
+                  cell.z = '#,##0';
                 }
               }
             }
@@ -583,7 +626,7 @@
             buttons.forEach(b => b.style.display = '');
 
             const imgData = canvas.toDataURL('image/png', 1.0);
-            const imgWidth = 190; // A4 寬度 210mm - 左右邊距 20mm
+            const imgWidth = 190;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             if (addedPages > 0) {
@@ -778,18 +821,23 @@
 
       let html = '';
 
-      html += `
-        <div class="table-toolbar">
-          <button class="btn btn-light" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列 (Row)</button>
-          <button class="btn btn-light" onclick="deleteRow()"><i class="fa-solid fa-minus"></i> 刪除最後一列</button>
-          <button class="btn btn-light" onclick="addColumn()"><i class="fa-solid fa-columns"></i> 新增欄位 (Column)</button>
-          <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
-        </div>
-      `;
+      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
+      const isSecondSheet = (currentSheet.id === "s2" || currentSheet.name.includes("各客戶累積產值"));
+
+      // 若為固定格式分頁，隱藏增減列按鈕以保護固定項目與客戶名稱完整
+      if (!isFirstSheet && !isSecondSheet) {
+        html += `
+          <div class="table-toolbar">
+            <button class="btn btn-light" onclick="addRow()"><i class="fa-solid fa-plus"></i> 新增列 (Row)</button>
+            <button class="btn btn-light" onclick="deleteRow()"><i class="fa-solid fa-minus"></i> 刪除最後一列</button>
+            <button class="btn btn-light" onclick="addColumn()"><i class="fa-solid fa-columns"></i> 新增欄位 (Column)</button>
+            <button class="btn btn-light" onclick="deleteColumn()"><i class="fa-solid fa-trash-can"></i> 刪除最後一欄</button>
+          </div>
+        `;
+      }
 
       const hasCustomerCol = sheetColumns.some(c => c.title.includes('客戶') || c.title.includes('總計'));
-      const isFirstSheet = (currentSheet.id === "s1" || currentSheet.name.includes("產能量能分析"));
-      const isSecondSheet = (!isFirstSheet && hasCustomerCol);
+      const isSecondSheetCheck = (!isFirstSheet && hasCustomerCol);
 
       if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
         html += renderSheet1ComparisonCards(currentSheet);
@@ -805,7 +853,13 @@
         currentSheet.data.forEach((row, rIdx) => {
           html += `<tr>`;
           sheetColumns.forEach(col => {
-            html += `<td contenteditable="true" onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)">${row[col.key] || '-'}</td>`;
+            // 若為第一欄(項目)或是倒數第二欄(客戶)，不可編輯以確保固定文字完整
+            const isProtectedCol = (isFirstSheet && col.key === 'item') || (isSecondSheet && col.title.includes('客戶'));
+            if (isProtectedCol) {
+              html += `<td style="background: #f8fafc; font-weight: 600; color: #1e293b;">${row[col.key] || '-'}</td>`;
+            } else {
+              html += `<td contenteditable="true" onblur="updateCellData(${rIdx}, '${col.key}', this.innerText)">${row[col.key] || '-'}</td>`;
+            }
           });
           html += `</tr>`;
         });
@@ -826,7 +880,7 @@
           `;
         });
         html += `</div>`;
-      } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
+      } else if (isSecondSheetCheck && currentSheet.data && currentSheet.data.length > 0) {
         html += renderSheet2StrongWeakCards(currentSheet);
 
         html += `
@@ -855,7 +909,7 @@
       requestAnimationFrame(() => {
         if (isFirstSheet && currentSheet.data && currentSheet.data.length > 0) {
           window.sheet1ChartConfigs.forEach(cp => buildChartSheet1(cp, currentSheet));
-        } else if (isSecondSheet && currentSheet.data && currentSheet.data.length > 0) {
+        } else if (isSecondSheetCheck && currentSheet.data && currentSheet.data.length > 0) {
           renderTreemap(currentSheet);
           renderCustomerChangeAnalysis(currentSheet);
         }
@@ -864,7 +918,7 @@
 
     function renderSheet1ComparisonCards(sheet) {
       const columns = sheet.columns || [];
-      const dataCols = columns.filter(c => c.key !== 'month' && !c.title.includes('月份'));
+      const dataCols = columns.filter(c => c.key !== 'item' && !c.title.includes('項目'));
       if (dataCols.length < 2) return '';
 
       const lastCol = dataCols[dataCols.length - 1];
@@ -887,26 +941,9 @@
       let qtyCardsHtml = '';
 
       valueTargetTitles.forEach(title => {
-        const colDef = columns.find(c => c.title === title);
-        let curVal = 0;
-        let preVal = 0;
-
-        if (colDef) {
-          sheet.data.forEach(row => {
-            curVal += parseNum(row[colDef.key]);
-          });
-          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)) || r.item === colDef.key);
-          if (targetRow) {
-            curVal = parseNum(targetRow[lastCol.key]);
-            preVal = parseNum(targetRow[prevCol.key]);
-          }
-        } else {
-          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)));
-          if (targetRow) {
-            curVal = parseNum(targetRow[lastCol.key]);
-            preVal = parseNum(targetRow[prevCol.key]);
-          }
-        }
+        const targetRow = sheet.data.find(r => r.item === title);
+        let curVal = targetRow ? parseNum(targetRow[lastCol.key]) : 0;
+        let preVal = targetRow ? parseNum(targetRow[prevCol.key]) : 0;
 
         const diff = curVal - preVal;
         const pct = preVal !== 0 ? ((diff / preVal) * 100).toFixed(1) : '0.0';
@@ -929,23 +966,9 @@
       });
 
       qtyTargetTitles.forEach(title => {
-        const colDef = columns.find(c => c.title === title);
-        let curVal = 0;
-        let preVal = 0;
-
-        if (colDef) {
-          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)) || r.item === colDef.key);
-          if (targetRow) {
-            curVal = parseNum(targetRow[lastCol.key]);
-            preVal = parseNum(targetRow[prevCol.key]);
-          }
-        } else {
-          const targetRow = sheet.data.find(r => Object.values(r).some(v => String(v).includes(title)));
-          if (targetRow) {
-            curVal = parseNum(targetRow[lastCol.key]);
-            preVal = parseNum(targetRow[prevCol.key]);
-          }
-        }
+        const targetRow = sheet.data.find(r => r.item === title);
+        let curVal = targetRow ? parseNum(targetRow[lastCol.key]) : 0;
+        let preVal = targetRow ? parseNum(targetRow[prevCol.key]) : 0;
 
         const diff = curVal - preVal;
         const pct = preVal !== 0 ? ((diff / preVal) * 100).toFixed(1) : '0.0';
