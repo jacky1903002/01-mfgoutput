@@ -10,6 +10,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <!-- html2canvas for Exporting PNG -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  <!-- jsPDF for Exporting PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
@@ -197,6 +199,11 @@
             <input type="file" id="upload-all-excel" accept=".xlsx, .xls" style="display: none;">
           </label>
 
+          <!-- 一鍵匯出所有圖表 PDF -->
+          <button class="btn btn-primary" onclick="exportAllChartsToPDF()">
+            <i class="fa-solid fa-file-pdf"></i> 匯出所有圖表 PDF
+          </button>
+
           <button class="btn btn-danger" id="auth-btn">
             <i class="fa-solid fa-right-from-bracket"></i> 登出系統
           </button>
@@ -312,7 +319,7 @@
       }
     };
 
-    // 1. Firebase 入口認證監聽：未驗證隱藏專案、驗證後顯示
+    // Firebase 認證監聽
     onAuthStateChanged(auth, (user) => {
       window.currentUser = user;
       const loginPortal = document.getElementById('login-portal');
@@ -331,7 +338,6 @@
       window.renderMainContent();
     });
 
-    // 門戶登入驗證
     const handlePortalLogin = () => {
       const email = document.getElementById('portal-email').value.trim();
       const password = document.getElementById('portal-password').value;
@@ -420,7 +426,7 @@
       window.renderMainContent();
     });
 
-    // 2. 匯出 Excel (導出所有工作表)
+    // 匯出 Excel (支援指定格式：日期 Jan-23、數字數值小數點 0 位、百分比 2 位)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -443,6 +449,40 @@
           });
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
+
+          // 套用指定儲存格格式 (日期 Jan-23、數值到小數點0位、百分比到小數點2位)
+          const range = XLSX.utils.decode_range(ws['!ref']);
+          for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+              const cell = ws[cellAddress];
+              if (!cell) continue;
+              const colTitle = headers[C] || '';
+              const val = cell.v;
+
+              if (colTitle.includes('月份') || colTitle.includes('時間') || String(val).match(/^\d{4}[/-]\d{1,2}([/-]\d{1,2})?$/)) {
+                let d = new Date(val);
+                if (!isNaN(d.getTime())) {
+                  cell.t = 'd';
+                  cell.v = d;
+                  cell.z = 'mmm-yy'; // 顯示成 Jan-23 格式
+                }
+              } else if (colTitle.includes('百分比') || colTitle.includes('/') || String(val).includes('%')) {
+                let num = parseNum(val, true);
+                cell.t = 'n';
+                cell.v = num / 100;
+                cell.z = '0.00%'; // 百分比到小數點第二位
+              } else {
+                let num = parseNum(val);
+                if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '') {
+                  cell.t = 'n';
+                  cell.v = num;
+                  cell.z = '#,##0'; // 數字數值到小數點 0 位
+                }
+              }
+            }
+          }
+
           XLSX.utils.book_append_sheet(wb, ws, sheet.name);
         });
 
@@ -452,7 +492,7 @@
       }
     };
 
-    // 3. 一次匯入所有相符的工作表
+    // 一次匯入所有相符的工作表
     document.getElementById('upload-all-excel').addEventListener('change', function(e) {
       if (!window.currentUser) return;
       const file = e.target.files[0];
@@ -507,6 +547,70 @@
       };
       reader.readAsArrayBuffer(file);
     });
+
+    // 一鍵匯出所有頁面圖表成 PDF 功能
+    window.exportAllChartsToPDF = async function() {
+      try {
+        if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+          return alert('jsPDF 尚未載入完成！');
+        }
+        const { jsPDF } = window.jspdf || jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const originalActiveId = window.activeSheetId;
+
+        const chartTaskConfigs = [
+          { sheetId: 's1', areaId: 'export-area-s1_chart_1', title: '合計產出市值 / 產出數量趨勢圖' },
+          { sheetId: 's1', areaId: 'export-area-s1_chart_2', title: '報廢 / 產值 分析圖' },
+          { sheetId: 's1', areaId: 'export-area-s1_chart_3', title: '刀具費 / 產值 分析圖' },
+          { sheetId: 's1', areaId: 'export-area-s1_chart_4', title: '加班費 / 產值 分析圖' },
+          { sheetId: 's2', areaId: 'export-area-s2_treemap', title: '各客戶累積產值佔比' },
+          { sheetId: 's2', areaId: 'export-area-s2_analysis', title: '客戶產值變化分析' }
+        ];
+
+        let addedPages = 0;
+        for (const task of chartTaskConfigs) {
+          if (window.activeSheetId !== task.sheetId) {
+            window.switchTab(task.sheetId);
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+
+          const element = document.getElementById(task.areaId);
+          if (element) {
+            const buttons = element.querySelectorAll('button');
+            buttons.forEach(b => b.style.display = 'none');
+
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            buttons.forEach(b => b.style.display = '');
+
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            const imgWidth = 190; // A4 寬度 210mm - 左右邊距 20mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            if (addedPages > 0) {
+              pdf.addPage();
+            }
+
+            pdf.setFontSize(14);
+            pdf.text(task.title, 10, 15);
+            pdf.addImage(imgData, 'PNG', 10, 20, imgWidth, Math.min(imgHeight, 260));
+            addedPages++;
+          }
+        }
+
+        if (window.activeSheetId !== originalActiveId) {
+          window.switchTab(originalActiveId);
+        }
+
+        if (addedPages > 0) {
+          pdf.save(`MFG_All_Charts_Report_${new Date().toISOString().slice(0,10)}.pdf`);
+        } else {
+          alert('沒有找到可匯出的圖表區域！');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('匯出 PDF 失敗：' + err.message);
+      }
+    };
 
     window.renderLogo = function() {
       const logoBox = document.getElementById('logo-box');
@@ -661,7 +765,6 @@
       return num;
     }
 
-    // 4. 圖表動態響應與渲染控制
     window.renderMainContent = function() {
       const container = document.getElementById('main-content');
       const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
@@ -759,7 +862,6 @@
       });
     };
 
-    // 工作表一：抓取最後一個欄位當作當月、倒數第二個欄位當作前月（包含合計項目）
     function renderSheet1ComparisonCards(sheet) {
       const columns = sheet.columns || [];
       const dataCols = columns.filter(c => c.key !== 'month' && !c.title.includes('月份'));
@@ -880,7 +982,6 @@
       `;
     }
 
-    // 工作表二：「各客戶累積產值」強勁與疲軟類別專屬分析卡片與列表
     function renderSheet2StrongWeakCards(sheet) {
       const columns = sheet.columns || [];
       const customerColIndex = columns.findIndex(c => String(c.title).trim().includes('客戶'));
