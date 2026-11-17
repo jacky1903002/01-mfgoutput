@@ -283,14 +283,14 @@
     ];
 
     const defaultColumns2 = [
-      { key: "m_202601", title: "202601" },
-      { key: "m_202602", title: "202602" },
-      { key: "m_202603", title: "202603" },
-      { key: "m_202604", title: "202604" },
-      { key: "m_202605", title: "202605" },
-      { key: "m_202606", title: "202606" },
-      { key: "m_202607", title: "202607" },
-      { key: "m_202608", title: "202608" },
+      { key: "m_202601", title: "Jan-26" },
+      { key: "m_202602", title: "Feb-26" },
+      { key: "m_202603", title: "Mar-26" },
+      { key: "m_202604", title: "Apr-26" },
+      { key: "m_202605", title: "May-26" },
+      { key: "m_202606", title: "Jun-26" },
+      { key: "m_202607", title: "Jul-26" },
+      { key: "m_202608", title: "Aug-26" },
       { key: "customer", title: "客戶" },
       { key: "total", title: "總計" }
     ];
@@ -312,20 +312,19 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 【核心修正】強固的日期解析與時間戳記轉換函式（保證嚴格按時間先後排序）
+    // 【強固版日期解析器】全面支援 mmm-yy (如 Jan-26)、YYYYMM、標準日期字串
     window.parseDateKey = function(strOrDate) {
       if (!strOrDate) return 0;
       if (strOrDate instanceof Date) return strOrDate.getTime();
       const s = String(strOrDate).trim();
       if (!s || s.toUpperCase().includes('EMPTY') || s === '-') return 0;
       
-      // 支援 Excel 讀入的 Date 物件轉字串或標準時間字串
       const d = new Date(s);
       if (!isNaN(d.getTime()) && !s.match(/^\d+$/) && !s.match(/^[A-Za-z]{3}[/-]\d{2,4}$/)) {
         return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
       }
       
-      // 支援 "Jan-23" 或 "Jan-2023"
+      // 支援 "Jan-26", "Jan-2023"
       const matchJan = s.match(/([A-Za-z]{3})[/-](\d{2,4})/);
       if (matchJan) {
         const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
@@ -334,7 +333,7 @@
         return new Date(yr, months[matchJan[1]] !== undefined ? months[matchJan[1]] : 0, 1).getTime();
       }
       
-      // 支援 "202301" 或 "2023-01"
+      // 支援 "202601", "2023-01"
       const matchStd = s.match(/(\d{4})[/-]?(\d{1,2})/);
       if (matchStd) {
         return new Date(parseInt(matchStd[1], 10), parseInt(matchStd[2], 10) - 1, 1).getTime();
@@ -440,7 +439,7 @@
               cols = cols.filter((_, idx) => idx !== totalIndex);
             }
 
-            // 【核心修正】強力強制依照時間先後遞增排序
+            // 強制依真實時間嚴格遞增排序欄位
             cols.sort((a, b) => {
               const tA = String(a.title || '').trim();
               const tB = String(b.title || '').trim();
@@ -525,7 +524,7 @@
       }
     });
 
-    // 【強制將 Excel 匯出之日期欄位格式化為 mmm-yy】
+    // 匯出 Excel 並強制設定日期格式為 mmm-yy
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -563,7 +562,7 @@
           }
 
           let processedCols = cols;
-          if (isFirstSheet) {
+          if (isFirstSheet || isSecondSheet) {
             processedCols = cols.map(c => {
               const dTime = window.parseDateKey(c.title);
               if (dTime > 0) {
@@ -578,7 +577,7 @@
           const rowsData = exportRowsData.map(row => {
             const obj = {};
             processedCols.forEach(c => {
-              if (isFirstSheet && c._dateObj && !c.title.includes('項目') && !c.title.includes('總計')) {
+              if ((isFirstSheet || isSecondSheet) && c._dateObj && !c.title.includes('項目') && !c.title.includes('客戶') && !c.title.includes('總計')) {
                 obj[c.title] = c._dateObj;
               } else {
                 obj[c.title] = row[c.key] !== undefined ? row[c.key] : '';
@@ -589,7 +588,7 @@
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
 
-          if (isFirstSheet) {
+          if (isFirstSheet || isSecondSheet) {
             const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
             for (let C = range.s.c; C <= range.e.c; ++C) {
               const colDef = processedCols[C];
@@ -852,7 +851,7 @@
       if (!window.currentUser) return;
       const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet) return;
-      const colName = prompt("請輸入新增欄位名稱 (例如 Jan-26)：", "Nov-26");
+      const colName = prompt("請輸入新增欄位名稱 (例如 Nov-26)：", "Nov-26");
       if (!colName || colName.trim() === "") return;
       const newKey = `col_${Date.now()}`;
       curSheet.columns.push({ key: newKey, title: colName.trim() });
@@ -973,7 +972,7 @@
           <div class="charts-section-title" style="margin-top: 30px;"><i class="fa-solid fa-scale-balanced"></i> 客戶產值變化分析</div>
           <div class="chart-page" id="export-area-s2_analysis" style="max-width: 100%; margin-bottom: 30px;">
             <div class="chart-header">
-              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (依『客戶』欄位前一欄當作當月、前前一欄當作前月)</div>
+              <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (自動取時間序列最後一個月當作當月、倒數第二個月當作前月)</div>
               <button class="btn btn-success" onclick="exportChartToPNG('s2_analysis', '客戶產值變化分析')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
             </div>
             <div id="customer-change-analysis-container" style="width: 100%;"></div>
@@ -1087,18 +1086,20 @@
 
     function renderSheet2StrongWeakCards(sheet) {
       const columns = sheet.columns || [];
-      const customerColIndex = columns.findIndex(c => String(c.title).trim().includes('客戶'));
-      if (customerColIndex === -1 || customerColIndex < 2) return '';
+      const timeCols = columns.filter(c => window.parseDateKey(c.title) > 0);
+      timeCols.sort((a, b) => window.parseDateKey(a.title) - window.parseDateKey(b.title));
+      if (timeCols.length < 2) return '';
 
-      const currMonthCol = columns[customerColIndex - 1];
-      const prevMonthCol = columns[customerColIndex - 2];
+      const currMonthCol = timeCols[timeCols.length - 1];
+      const prevMonthCol = timeCols[timeCols.length - 2];
+
+      const customerCol = columns.find(c => c.title.includes('客戶')) || { key: 'customer' };
 
       let strongList = [];
       let weakList = [];
 
       sheet.data.forEach(row => {
-        let custKey = columns[customerColIndex].key;
-        const custName = String(row[custKey] || '未知').trim();
+        const custName = String(row[customerCol.key] || '未知').trim();
         if (custName === '總計' || custName === '未知') return;
 
         const lastVal = parseNum(row[currMonthCol.key]);
@@ -1162,18 +1163,11 @@
       const container = document.getElementById('treemap-container');
       if (!container) return;
 
+      const customerCol = sheet.columns.find(c => c.title.includes('客戶')) || { key: 'customer' };
+      const totalCol = sheet.columns.find(c => c.title.includes('總計')) || { key: 'total' };
+
       let items = sheet.data.map(row => {
-        let custKey = Object.keys(row).find(k => {
-          const colDef = sheet.columns.find(c => c.key === k);
-          return (colDef ? colDef.title : k).includes('客戶');
-        }) || 'customer';
-
-        let totalKey = Object.keys(row).find(k => {
-          const colDef = sheet.columns.find(c => c.key === k);
-          return (colDef ? colDef.title : k).includes('總計');
-        }) || 'total';
-
-        return { customer: row[custKey] || '未知', value: parseNum(row[totalKey] || 0) };
+        return { customer: row[customerCol.key] || '未知', value: parseNum(row[totalCol.key] || 0) };
       }).filter(item => item.customer !== '總計' && item.value > 0);
 
       items.sort((a, b) => b.value - a.value);
@@ -1204,14 +1198,17 @@
       if (!container) return;
 
       const columns = sheet.columns || [];
-      const customerColIndex = columns.findIndex(c => String(c.title).trim().includes('客戶'));
-      if (customerColIndex === -1 || customerColIndex < 2) {
-        container.innerHTML = '<div style="color: #64748b; font-size: 13px; padding: 12px 0;">找不到「客戶」欄位或其前方的月份欄位不足。</div>';
+      const timeCols = columns.filter(c => window.parseDateKey(c.title) > 0);
+      timeCols.sort((a, b) => window.parseDateKey(a.title) - window.parseDateKey(b.title));
+
+      if (timeCols.length < 2) {
+        container.innerHTML = '<div style="color: #64748b; font-size: 13px; padding: 12px 0;">月份欄位不足兩個，無法進行趨勢變化分析。</div>';
         return;
       }
 
-      const currMonthCol = columns[customerColIndex - 1];
-      const prevMonthCol = columns[customerColIndex - 2];
+      const currMonthCol = timeCols[timeCols.length - 1];
+      const prevMonthCol = timeCols[timeCols.length - 2];
+      const customerCol = columns.find(c => c.title.includes('客戶')) || { key: 'customer' };
 
       const prevMonthTitle = prevMonthCol.title;
       const currMonthTitle = currMonthCol.title;
@@ -1220,8 +1217,7 @@
       let declineList = [];
 
       sheet.data.forEach(row => {
-        let custKey = columns[customerColIndex].key;
-        const customerName = String(row[custKey] || '未知').trim();
+        const customerName = String(row[customerCol.key] || '未知').trim();
         if (customerName === '總計' || customerName === '未知') return;
 
         const currVal = parseNum(row[currMonthCol.key]);
@@ -1355,7 +1351,6 @@
         return !title.toUpperCase().includes('EMPTY') && window.parseDateKey(title) > 0;
       });
 
-      // 【核心修正】圖表繪製前強制嚴格按真實時間遞增排序
       validMonthKeys.sort((a, b) => {
         const colA = sheet.columns.find(c => c.key === a)?.title || a;
         const colB = sheet.columns.find(c => c.key === b)?.title || b;
