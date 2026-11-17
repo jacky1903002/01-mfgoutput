@@ -312,20 +312,16 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 【核心修正】絕對強固的時間解析函式，支援 ISO 字串、YYYY-MM-DD、Jan-23、202301 等各種格式
+    // 時間解析與格式化工具
     window.parseDateKey = function(strOrDate) {
       if (!strOrDate) return 0;
       if (strOrDate instanceof Date) return strOrDate.getTime();
       const s = String(strOrDate).trim();
       if (!s || s.toUpperCase().includes('EMPTY') || s === '-') return 0;
       
-      // 支援 "2023-01-01 00:00:00" 或標準日期字串
       const d = new Date(s);
-      if (!isNaN(d.getTime()) && !s.match(/^\d+$/)) {
-        return d.getTime();
-      }
+      if (!isNaN(d.getTime()) && !s.match(/^\d+$/)) return d.getTime();
       
-      // 支援 "Jan-23" 或 "Jan-2023"
       const matchJan = s.match(/([A-Za-z]{3})[/-](\d{2,4})/);
       if (matchJan) {
         const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
@@ -334,12 +330,10 @@
         return new Date(yr, months[matchJan[1]] || 0, 1).getTime();
       }
       
-      // 支援 "202301" 或 "2023-01"
       const matchStd = s.match(/(\d{4})[/-]?(\d{1,2})/);
       if (matchStd) {
         return new Date(parseInt(matchStd[1], 10), parseInt(matchStd[2], 10) - 1, 1).getTime();
       }
-      
       return 0;
     };
 
@@ -441,7 +435,7 @@
               cols = cols.filter((_, idx) => idx !== totalIndex);
             }
 
-            // 【核心修正】全域強制將所有月份欄位依照時間先後遞增排序
+            // 強制依時間遞增排序
             cols.sort((a, b) => {
               const tA = a.title;
               const tB = b.title;
@@ -524,6 +518,7 @@
       }
     });
 
+    // 【強制將 Excel 匯出之日期欄位格式化為 mmm-yy】
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -560,16 +555,53 @@
             });
           }
 
-          const headers = cols.map(c => c.title);
+          // 如果是頁一（產能量能分析），強制將標題轉換為 Date 物件並設定 `mmm-yy` 格式
+          let processedCols = cols;
+          if (isFirstSheet) {
+            processedCols = cols.map(c => {
+              const dTime = window.parseDateKey(c.title);
+              if (dTime > 0) {
+                const d = new Date(dTime);
+                return { ...c, _dateObj: d };
+              }
+              return c;
+            });
+          }
+
+          const headers = processedCols.map(c => c.title);
           const rowsData = exportRowsData.map(row => {
             const obj = {};
-            cols.forEach(c => {
-              obj[c.title] = row[c.key] !== undefined ? row[c.key] : '';
+            processedCols.forEach(c => {
+              if (isFirstSheet && c._dateObj && !c.title.includes('項目') && !c.title.includes('總計')) {
+                obj[c.title] = c._dateObj; // 填入 JS Date 物件讓 Excel 識別為日期
+              } else {
+                obj[c.title] = row[c.key] !== undefined ? row[c.key] : '';
+              }
             });
             return obj;
           });
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
+
+          // 針對頁面一強制套用 `mmm-yy` 日期自訂格式
+          if (isFirstSheet) {
+            const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              const colTitle = headers[C] || '';
+              const colDef = processedCols[C];
+              if (colDef && colDef._dateObj) {
+                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                  const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                  const cell = ws[cellAddress];
+                  if (cell) {
+                    cell.t = 'd';
+                    cell.z = 'mmm-yy'; // 強制指定 mmm-yy 格式
+                  }
+                }
+              }
+            }
+          }
+
           XLSX.utils.book_append_sheet(wb, ws, sheet.name);
         });
 
@@ -601,7 +633,6 @@
                 
                 const parsedColumns = keys.map(h => ({ key: `col_${Math.random().toString(36).substr(2,9)}`, title: h.trim() }));
                 
-                // 匯入時自動依真實時間遞增排序
                 parsedColumns.sort((a, b) => {
                   if (a.title.includes('項目') || a.title.includes('客戶') || a.title.includes('總計')) return -1;
                   if (b.title.includes('項目') || b.title.includes('客戶') || b.title.includes('總計')) return 1;
@@ -1316,7 +1347,7 @@
         return !title.toUpperCase().includes('EMPTY') && window.parseDateKey(title) > 0;
       });
 
-      // 【核心修正】圖表建立前強制進行真實時間遞增排序
+      // 圖表建立前嚴格依時間遞增排序
       validMonthKeys.sort((a, b) => {
         const colA = sheet.columns.find(c => c.key === a)?.title || a;
         const colB = sheet.columns.find(c => c.key === b)?.title || b;
