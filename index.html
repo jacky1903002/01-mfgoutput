@@ -312,6 +312,48 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
+    // 強固的日期解析與格式化工具
+    window.parseDateKey = function(strOrDate) {
+      if (!strOrDate) return 0;
+      if (strOrDate instanceof Date) return strOrDate.getTime();
+      const s = String(strOrDate).trim();
+      if (!s || s.toUpperCase().includes('EMPTY') || s === '-') return 0;
+      
+      const d = new Date(s);
+      if (!isNaN(d.getTime()) && !s.match(/^\d+$/)) return d.getTime();
+      
+      const matchJan = s.match(/([A-Za-z]{3})-(\d{2})/);
+      if (matchJan) {
+        const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
+        return new Date(2000 + parseInt(matchJan[2], 10), months[matchJan[1]] || 0, 1).getTime();
+      }
+      
+      const matchStd = s.match(/(\d{4})[/-]?(\d{1,2})/);
+      if (matchStd) {
+        return new Date(parseInt(matchStd[1], 10), parseInt(matchStd[2], 10) - 1, 1).getTime();
+      }
+      return 0;
+    };
+
+    window.formatColumnTitle = function(val) {
+      if (!val) return '';
+      if (val instanceof Date) {
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const monthsStr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${monthsStr[val.getMonth()]}-${String(y).slice(-2)}`;
+      }
+      const s = String(val).trim();
+      if (s.includes('00:00:00')) {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          const monthsStr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return `${monthsStr[d.getMonth()]-1 || monthsStr[d.getMonth()]}?` || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+      }
+      return s;
+    };
+
     window.formatDateTime = function(isoString) {
       if (!isoString) return '尚無更新紀錄';
       const d = new Date(isoString);
@@ -390,29 +432,50 @@
       }
     };
 
+    // 資料清洗與防呆過濾（完全排除 _EMPTY 與無效欄位）
     onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.sheets && Array.isArray(data.sheets)) {
           window.sheets = data.sheets.map(s => {
             let cols = s.columns || [];
+            // 過濾掉任何包含 EMPTY、空白或非有效定義的爛欄位
+            cols = cols.filter(c => {
+              const t = String(c.title || '').trim();
+              const k = String(c.key || '').trim();
+              if (!t || t.toUpperCase().includes('EMPTY') || k.toUpperCase().includes('EMPTY')) return false;
+              return true;
+            });
+
             const totalIndex = cols.findIndex(c => String(c.title).trim() === '總計');
+            let totalCol = null;
             if (totalIndex !== -1) {
-              const validCols = cols.slice(0, totalIndex + 1);
-              const validKeys = new Set(validCols.map(c => c.key));
-              s.data = (s.data || []).map(row => {
-                let newRow = {};
-                Object.keys(row).forEach(k => {
-                  if (validKeys.has(k)) {
-                    newRow[k] = row[k];
-                  }
-                });
-                return newRow;
-              });
-              cols = validCols;
+              totalCol = cols[totalIndex];
+              cols = cols.filter((_, idx) => idx !== totalIndex);
             }
 
-            if (s.id === "s1" || s.name.includes("產能量能分析")) {
+            // 將非固定標題的月份欄位進行時間排序
+            const isFirstSheet = (s.id === "s1" || s.name.includes("產能量能分析"));
+            const isSecondSheet = (s.id === "s2" || s.name.includes("各客戶累積產值"));
+
+            if (!isFirstSheet && !isSecondSheet) {
+              cols.sort((a, b) => window.parseDateKey(a.title) - window.parseDateKey(b.title));
+            }
+
+            if (totalCol) cols.push(totalCol);
+
+            const validKeys = new Set(cols.map(c => c.key));
+            s.data = (s.data || []).map(row => {
+              let newRow = {};
+              Object.keys(row).forEach(k => {
+                if (validKeys.has(k)) {
+                  newRow[k] = row[k];
+                }
+              });
+              return newRow;
+            });
+
+            if (isFirstSheet) {
               if (!cols.some(c => c.key === 'item' || c.title === '項目')) {
                 cols.unshift({ key: "item", title: "項目" });
               }
@@ -426,7 +489,7 @@
               s.data = newRows;
             }
 
-            if (s.id === "s2" || s.name.includes("各客戶累積產值")) {
+            if (isSecondSheet) {
               let custCol = cols.find(c => c.title.includes('客戶'));
               if (!custCol) {
                 const totalIdx = cols.findIndex(c => c.title.includes('總計'));
@@ -477,16 +540,12 @@
 
         window.sheets.forEach(sheet => {
           let cols = sheet.columns || [];
-          const totalIndex = cols.findIndex(c => String(c.title).trim() === '總計');
-          if (totalIndex !== -1) {
-            cols = cols.slice(0, totalIndex + 1);
-          }
+          cols = cols.filter(c => !String(c.title).toUpperCase().includes('EMPTY'));
 
           const isFirstSheet = (sheet.id === "s1" || sheet.name.includes("產能量能分析"));
           const isSecondSheet = (sheet.id === "s2" || sheet.name.includes("各客戶累積產值"));
 
           let exportRowsData = JSON.parse(JSON.stringify(sheet.data || []));
-
           let itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
           let custColKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
 
@@ -520,46 +579,6 @@
           });
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
-
-          const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
-          for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-            for (let C = range.s.c; C <= range.e.c; ++C) {
-              const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-              const cell = ws[cellAddress];
-              if (!cell) continue;
-              const colTitle = headers[C] || '';
-              const val = cell.v;
-
-              if (colTitle.includes('項目') || colTitle.includes('客戶')) {
-                cell.t = 's';
-                cell.v = String(val);
-                delete cell.z;
-                continue;
-              }
-
-              if (colTitle.includes('月份') || colTitle.includes('時間') || String(val).match(/^\d{4}[/-]\d{1,2}([/-]\d{1,2})?$/)) {
-                let d = new Date(val);
-                if (!isNaN(d.getTime())) {
-                  cell.t = 'd';
-                  cell.v = d;
-                  cell.z = 'mmm-yy';
-                }
-              } else if (colTitle.includes('百分比') || colTitle.includes('/') || String(val).includes('%')) {
-                let num = parseNum(val, true);
-                cell.t = 'n';
-                cell.v = num / 100;
-                cell.z = '0.00%';
-              } else {
-                let num = parseNum(val);
-                if (!isNaN(num) && String(val).trim() !== '-' && String(val).trim() !== '') {
-                  cell.t = 'n';
-                  cell.v = num;
-                  cell.z = '#,##0';
-                }
-              }
-            }
-          }
-
           XLSX.utils.book_append_sheet(wb, ws, sheet.name);
         });
 
@@ -587,17 +606,24 @@
               const worksheet = workbook.Sheets[sheetName];
               const rawJson = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "-" });
               if (rawJson.length > 0) {
-                let keys = Object.keys(rawJson[0]);
-                const totalKeyIndex = keys.findIndex(k => String(k).trim() === '總計');
-                if (totalKeyIndex !== -1) {
-                  keys = keys.slice(0, totalKeyIndex + 1);
-                }
+                let keys = Object.keys(rawJson[0]).filter(k => !k.toUpperCase().includes('EMPTY') && k.trim() !== '');
+                
+                const parsedColumns = keys.map(h => ({ key: `col_${Math.random().toString(36).substr(2,9)}`, title: h.trim() }));
+                
+                // 依時間排序月份欄位
+                parsedColumns.sort((a, b) => {
+                  if (a.title.includes('項目') || a.title.includes('客戶') || a.title.includes('總計')) return -1;
+                  if (b.title.includes('項目') || b.title.includes('客戶') || b.title.includes('總計')) return 1;
+                  return window.parseDateKey(a.title) - window.parseDateKey(b.title);
+                });
 
-                const parsedColumns = keys.map(h => ({ key: h, title: h.trim() }));
                 const parsedData = rawJson.map(row => {
                   let newRow = {};
-                  keys.forEach(k => {
-                    newRow[k] = row[k] !== undefined ? row[k] : "-";
+                  keys.forEach((origKey, idx) => {
+                    const targetCol = parsedColumns.find(c => c.title === origKey);
+                    if (targetCol) {
+                      newRow[targetCol.key] = row[origKey] !== undefined ? row[origKey] : "-";
+                    }
                   });
                   return newRow;
                 });
@@ -624,7 +650,6 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 修正：匯出 PDF 時載入開源中文標準字型，解決 PDF 表頭中文亂碼問題
     window.exportAllChartsToPDF = async function() {
       try {
         if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
@@ -633,11 +658,6 @@
         const { jsPDF } = window.jspdf || jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const originalActiveId = window.activeSheetId;
-
-        // 從雲端載入支援中文的標準字型 (Noto Sans SC / TC 基底)
-        const fontUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf";
-        // 使用更穩定的開源中文標準字型 (NotoSansTC 或者是用 canvas 繪製表頭確保百分之百無亂碼)
-        // 為了達到 100% 絕對不亂碼，我們改用將標題連同圖表一起透過 html2canvas 完美截圖渲染到 PDF 中，免去 jsPDF 字型編碼問題！
         
         const chartTaskConfigs = [
           { sheetId: 's1', areaId: 'export-area-s1_chart_1', title: '合計產出市值 / 產出數量趨勢圖' },
@@ -660,7 +680,6 @@
             const buttons = element.querySelectorAll('button');
             buttons.forEach(b => b.style.display = 'none');
 
-            // 直接將整個包含中文標題與圖表的區塊完整截圖 (完美保留中文字型與樣式，絕不亂碼)
             const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
             buttons.forEach(b => b.style.display = '');
 
@@ -668,11 +687,7 @@
             const imgWidth = 190;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-            if (addedPages > 0) {
-              pdf.addPage();
-            }
-
-            // 直接貼上截圖，圖表上方的中文標題已經包含在圖片內，不需要額外用 jsPDF 寫入會亂碼的文字
+            if (addedPages > 0) pdf.addPage();
             pdf.addImage(imgData, 'PNG', 10, 15, imgWidth, Math.min(imgHeight, 270));
             addedPages++;
           }
@@ -807,7 +822,7 @@
       if (!window.currentUser) return;
       const curSheet = window.sheets.find(s => s.id === window.activeSheetId);
       if (!curSheet) return;
-      const colName = prompt("請輸入新增欄位名稱：", "202609");
+      const colName = prompt("請輸入新增欄位名稱 (例如 Jan-26)：", "Nov-26");
       if (!colName || colName.trim() === "") return;
       const newKey = `col_${Date.now()}`;
       curSheet.columns.push({ key: newKey, title: colName.trim() });
@@ -851,11 +866,7 @@
       const currentSheet = window.sheets.find(s => s.id === window.activeSheetId) || window.sheets[0];
       
       let sheetColumns = currentSheet.columns || [];
-      const totalIdx = sheetColumns.findIndex(c => String(c.title).trim() === '總計');
-      if (totalIdx !== -1) {
-        sheetColumns = sheetColumns.slice(0, totalIdx + 1);
-        currentSheet.columns = sheetColumns;
-      }
+      sheetColumns = sheetColumns.filter(c => !String(c.title).toUpperCase().includes('EMPTY'));
 
       let html = '';
 
@@ -953,12 +964,14 @@
     };
 
     function renderSheet1ComparisonCards(sheet) {
-      const columns = sheet.columns || [];
-      const dataCols = columns.filter(c => c.key !== 'item' && !c.title.includes('項目'));
-      if (dataCols.length < 2) return '';
+      const columns = (sheet.columns || []).filter(c => !c.title.includes('項目') && !c.title.includes('總計') && !c.title.toUpperCase().includes('EMPTY'));
+      
+      // 確保欄位依時間排序
+      columns.sort((a, b) => window.parseDateKey(a.title) - window.parseDateKey(b.title));
+      if (columns.length < 2) return '';
 
-      const lastCol = dataCols[dataCols.length - 1];
-      const prevCol = dataCols[dataCols.length - 2];
+      const lastCol = columns[columns.length - 1];
+      const prevCol = columns[columns.length - 2];
 
       const valueTargetTitles = [
         "石墨產出市值(NT$)", 
@@ -976,8 +989,9 @@
       let valueCardsHtml = '';
       let qtyCardsHtml = '';
 
+      const itemColKey = sheet.columns.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+
       valueTargetTitles.forEach(title => {
-        const itemColKey = columns.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
         const targetRow = sheet.data.find(r => r[itemColKey] === title);
         let curVal = targetRow ? parseNum(targetRow[lastCol.key]) : 0;
         let preVal = targetRow ? parseNum(targetRow[prevCol.key]) : 0;
@@ -1003,7 +1017,6 @@
       });
 
       qtyTargetTitles.forEach(title => {
-        const itemColKey = columns.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
         const targetRow = sheet.data.find(r => r[itemColKey] === title);
         let curVal = targetRow ? parseNum(targetRow[lastCol.key]) : 0;
         let preVal = targetRow ? parseNum(targetRow[prevCol.key]) : 0;
@@ -1260,36 +1273,42 @@
       container.innerHTML = html;
     }
 
+    // 精準判斷跨年月份（每年 1 月份）繪製黑線的 Plugin
     const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
         const labels = chart.data.labels || [];
-        const yearGroups = {};
         
+        // 找出每年 1 月份的索引位置
+        const janIndices = [];
         labels.forEach((lbl, idx) => {
-          let yrMatch = String(lbl).match(/(\d{2})$/) || String(lbl).match(/^(\d{4})/);
-          const yr = yrMatch ? yrMatch[0] : 'Other';
-          if (!yearGroups[yr]) yearGroups[yr] = [];
-          yearGroups[yr].push(idx);
+          const dTime = window.parseDateKey(lbl);
+          if (dTime > 0) {
+            const d = new Date(dTime);
+            if (d.getMonth() === 0 && idx > 0) { // 1月且不是第一個
+              janIndices.push(idx);
+            }
+          }
         });
 
-        const yearKeys = Object.keys(yearGroups);
-        if (yearKeys.length <= 1) return;
+        if (janIndices.length === 0) return;
 
         ctx.save();
-        for (let i = 0; i < yearKeys.length - 1; i++) {
-          const prevLastIdx = yearGroups[yearKeys[i]].slice(-1)[0];
-          const currFirstIdx = yearGroups[yearKeys[i + 1]][0];
-          const separatorX = (x.getPixelForValue(prevLastIdx) + x.getPixelForValue(currFirstIdx)) / 2;
+        ctx.beginPath();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5;
 
-          ctx.beginPath();
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5;
+        janIndices.forEach(idx => {
+          const prevX = x.getPixelForValue(idx - 1);
+          const currX = x.getPixelForValue(idx);
+          const separatorX = (prevX + currX) / 2;
+
           ctx.moveTo(separatorX, top);
           ctx.lineTo(separatorX, bottom);
-          ctx.stroke();
-        }
+        });
+
+        ctx.stroke();
         ctx.restore();
       }
     };
@@ -1302,27 +1321,26 @@
       const firstRow = sheet.data[0] || {};
       const monthKeys = Object.keys(firstRow).filter(k => k !== 'item' && k !== '項目');
 
-      const parseDateVal = (keyOrTitle) => {
-        const str = String(keyOrTitle).trim();
-        const matchJan = str.match(/([A-Za-z]{3})-(\d{2})/);
-        if (matchJan) {
-          const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
-          return new Date(2000 + parseInt(matchJan[2], 10), months[matchJan[1]] || 0, 1).getTime();
-        }
-        const matchStandard = str.match(/(\d{4})[/-]?(\d{1,2})/);
-        if (matchStandard) {
-          return new Date(parseInt(matchStandard[1], 10), parseInt(matchStandard[2], 10) - 1, 1).getTime();
-        }
-        return new Date(str).getTime() || 0;
-      };
+      // 過濾並依時間嚴格排序
+      const validMonthKeys = monthKeys.filter(k => {
+        const colDef = sheet.columns.find(c => c.key === k);
+        const title = colDef ? colDef.title : k;
+        return !title.toUpperCase().includes('EMPTY') && window.parseDateKey(title) > 0;
+      });
 
-      const sortedMonthKeys = [...monthKeys].sort((a, b) => parseDateVal(a) - parseDateVal(b));
-      const labels = sortedMonthKeys.map(k => (sheet.columns.find(c => c.key === k) || {}).title || k);
+      validMonthKeys.sort((a, b) => {
+        const colA = sheet.columns.find(c => c.key === a)?.title || a;
+        const colB = sheet.columns.find(c => c.key === b)?.title || b;
+        return window.parseDateKey(colA) - window.parseDateKey(colB);
+      });
+
+      const labels = validMonthKeys.map(k => (sheet.columns.find(c => c.key === k) || {}).title || k);
 
       const getRowDataByItemName = (itemName, isPercentage = false) => {
-        const targetRow = sheet.data.find(r => (r.item || r.項目 || Object.values(r)[0] || '').includes(itemName));
-        if (!targetRow) return sortedMonthKeys.map(() => 0);
-        return sortedMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
+        const itemColKey = sheet.columns.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+        const targetRow = sheet.data.find(r => (r[itemColKey] || '').includes(itemName));
+        if (!targetRow) return validMonthKeys.map(() => 0);
+        return validMonthKeys.map(k => parseNum(targetRow[k], isPercentage));
       };
 
       if (config.type === "combo") {
