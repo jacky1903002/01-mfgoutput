@@ -312,26 +312,34 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 強固的日期解析函式（支援 Jan-23、2023-01、ISO Date 等各種格式）
+    // 【核心修正】絕對強固的時間解析函式，支援 ISO 字串、YYYY-MM-DD、Jan-23、202301 等各種格式
     window.parseDateKey = function(strOrDate) {
       if (!strOrDate) return 0;
       if (strOrDate instanceof Date) return strOrDate.getTime();
       const s = String(strOrDate).trim();
       if (!s || s.toUpperCase().includes('EMPTY') || s === '-') return 0;
       
+      // 支援 "2023-01-01 00:00:00" 或標準日期字串
       const d = new Date(s);
-      if (!isNaN(d.getTime()) && !s.match(/^\d+$/)) return d.getTime();
-      
-      const matchJan = s.match(/([A-Za-z]{3})-(\d{2})/);
-      if (matchJan) {
-        const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
-        return new Date(2000 + parseInt(matchJan[2], 10), months[matchJan[1]] || 0, 1).getTime();
+      if (!isNaN(d.getTime()) && !s.match(/^\d+$/)) {
+        return d.getTime();
       }
       
+      // 支援 "Jan-23" 或 "Jan-2023"
+      const matchJan = s.match(/([A-Za-z]{3})[/-](\d{2,4})/);
+      if (matchJan) {
+        const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
+        let yr = parseInt(matchJan[2], 10);
+        if (yr < 100) yr += 2000;
+        return new Date(yr, months[matchJan[1]] || 0, 1).getTime();
+      }
+      
+      // 支援 "202301" 或 "2023-01"
       const matchStd = s.match(/(\d{4})[/-]?(\d{1,2})/);
       if (matchStd) {
         return new Date(parseInt(matchStd[1], 10), parseInt(matchStd[2], 10) - 1, 1).getTime();
       }
+      
       return 0;
     };
 
@@ -419,7 +427,6 @@
         if (data.sheets && Array.isArray(data.sheets)) {
           window.sheets = data.sheets.map(s => {
             let cols = s.columns || [];
-            // 過濾掉 EMPTY 欄位
             cols = cols.filter(c => {
               const t = String(c.title || '').trim();
               const k = String(c.key || '').trim();
@@ -434,13 +441,14 @@
               cols = cols.filter((_, idx) => idx !== totalIndex);
             }
 
-            // 【核心修正】所有非固定欄位（月份）強制依照時間先後排序
-            const isFirstSheet = (s.id === "s1" || s.name.includes("產能量能分析"));
-            const isSecondSheet = (s.id === "s2" || s.name.includes("各客戶累積產值"));
-
-            if (!isFirstSheet && !isSecondSheet) {
-              cols.sort((a, b) => window.parseDateKey(a.title) - window.parseDateKey(b.title));
-            }
+            // 【核心修正】全域強制將所有月份欄位依照時間先後遞增排序
+            cols.sort((a, b) => {
+              const tA = a.title;
+              const tB = b.title;
+              if (tA.includes('項目') || tA.includes('客戶')) return -1;
+              if (tB.includes('項目') || tB.includes('客戶')) return 1;
+              return window.parseDateKey(tA) - window.parseDateKey(tB);
+            });
 
             if (totalCol) cols.push(totalCol);
 
@@ -454,6 +462,9 @@
               });
               return newRow;
             });
+
+            const isFirstSheet = (s.id === "s1" || s.name.includes("產能量能分析"));
+            const isSecondSheet = (s.id === "s2" || s.name.includes("各客戶累積產值"));
 
             if (isFirstSheet) {
               if (!cols.some(c => c.key === 'item' || c.title === '項目')) {
@@ -590,7 +601,7 @@
                 
                 const parsedColumns = keys.map(h => ({ key: `col_${Math.random().toString(36).substr(2,9)}`, title: h.trim() }));
                 
-                // 匯入時自動依時間先後排序月份欄位
+                // 匯入時自動依真實時間遞增排序
                 parsedColumns.sort((a, b) => {
                   if (a.title.includes('項目') || a.title.includes('客戶') || a.title.includes('總計')) return -1;
                   if (b.title.includes('項目') || b.title.includes('客戶') || b.title.includes('總計')) return 1;
@@ -1252,7 +1263,7 @@
       container.innerHTML = html;
     }
 
-    // 精準判斷跨年月份（每年 1 月份）繪製黑色垂直分隔線的 Plugin
+    // 跨年月份（1 月份）黑色垂直分隔線 Plugin
     const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
@@ -1264,7 +1275,6 @@
           const dTime = window.parseDateKey(lbl);
           if (dTime > 0) {
             const d = new Date(dTime);
-            // 當月份為 1 月 (getMonth() === 0) 且不是圖表的第ㄧ個點時，標記為跨年分隔線位置
             if (d.getMonth() === 0 && idx > 0) {
               janIndices.push(idx);
             }
@@ -1306,7 +1316,7 @@
         return !title.toUpperCase().includes('EMPTY') && window.parseDateKey(title) > 0;
       });
 
-      // 【核心修正】圖表端也強制依時間先後排序
+      // 【核心修正】圖表建立前強制進行真實時間遞增排序
       validMonthKeys.sort((a, b) => {
         const colA = sheet.columns.find(c => c.key === a)?.title || a;
         const colB = sheet.columns.find(c => c.key === b)?.title || b;
