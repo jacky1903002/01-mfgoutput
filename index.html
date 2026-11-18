@@ -188,7 +188,7 @@
           </label>
 
           <!-- 一鍵匯出所有圖表 PDF -->
-          <button class="btn btn-primary" onclick="exportAllChartsToPDF()">
+          <button class="btn btn-primary" id="btn-export-pdf" onclick="exportAllChartsToPDF()">
             <i class="fa-solid fa-file-pdf"></i> 匯出所有圖表 PDF
           </button>
 
@@ -679,29 +679,55 @@
       reader.readAsArrayBuffer(file);
     });
 
+    // 【修正版】一鍵匯出第一頁與第二頁所有分析卡片與圖表 PDF
     window.exportAllChartsToPDF = async function() {
+      const pdfBtn = document.getElementById('btn-export-pdf');
+      const originalBtnHtml = pdfBtn ? pdfBtn.innerHTML : '';
+
       try {
         if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
           return alert('jsPDF 尚未載入完成！');
         }
+        if (pdfBtn) {
+          pdfBtn.disabled = true;
+          pdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在匯出 PDF...';
+        }
+
         const { jsPDF } = window.jspdf || jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const originalActiveId = window.activeSheetId;
-        
-        const chartTaskConfigs = [
-          { sheetId: 's1', areaId: 'export-area-s1_chart_1', title: '合計產出市值 / 產出數量趨勢圖' },
-          { sheetId: 's1', areaId: 'export-area-s1_chart_2', title: '報廢 / 產值 分析圖' },
-          { sheetId: 's1', areaId: 'export-area-s1_chart_3', title: '刀具費 / 產值 分析圖' },
-          { sheetId: 's1', areaId: 'export-area-s1_chart_4', title: '加班費 / 產值 分析圖' },
-          { sheetId: 's2', areaId: 'export-area-s2_treemap', title: '各客戶累積產值佔比' },
-          { sheetId: 's2', areaId: 'export-area-s2_analysis', title: '客戶產值變化分析' }
-        ];
+
+        // 動態尋找第一頁（產能量能分析）與第二頁（各客戶累積產值）的工作表
+        const sheet1 = window.sheets.find(s => s.id === 's1' || s.name.includes('產能量能分析')) || window.sheets[0];
+        const sheet2 = window.sheets.find(s => s.id === 's2' || s.name.includes('各客戶累積產值') || (s.columns || []).some(c => c.title.includes('客戶'))) || window.sheets[1];
+
+        const exportTaskConfigs = [];
+
+        if (sheet1) {
+          exportTaskConfigs.push(
+            { sheetId: sheet1.id, areaId: 'export-area-s1_value_cards', title: '各類別與合計產值狀況 (NT$)' },
+            { sheetId: sheet1.id, areaId: 'export-area-s1_qty_cards', title: '各類別與合計生產數量 (PCS)' },
+            { sheetId: sheet1.id, areaId: 'export-area-s1_chart_1', title: '合計產出市值 / 產出數量趨勢圖' },
+            { sheetId: sheet1.id, areaId: 'export-area-s1_chart_2', title: '報廢 / 產值 分析圖' },
+            { sheetId: sheet1.id, areaId: 'export-area-s1_chart_3', title: '刀具費 / 產值 分析圖' },
+            { sheetId: sheet1.id, areaId: 'export-area-s1_chart_4', title: '加班費 / 產值 分析圖' }
+          );
+        }
+
+        if (sheet2) {
+          exportTaskConfigs.push(
+            { sheetId: sheet2.id, areaId: 'export-area-s2_strong_weak', title: '量能強勁與疲軟類別專屬分析卡片' },
+            { sheetId: sheet2.id, areaId: 'export-area-s2_treemap', title: '各客戶累積產值佔比 (Treemap)' },
+            { sheetId: sheet2.id, areaId: 'export-area-s2_analysis', title: '客戶產值變化分析' }
+          );
+        }
 
         let addedPages = 0;
-        for (const task of chartTaskConfigs) {
+        for (const task of exportTaskConfigs) {
           if (window.activeSheetId !== task.sheetId) {
             window.switchTab(task.sheetId);
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // 等待 DOM 與 Chart.js 動畫完成渲染
+            await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 600)));
           }
 
           const element = document.getElementById(task.areaId);
@@ -709,15 +735,36 @@
             const buttons = element.querySelectorAll('button');
             buttons.forEach(b => b.style.display = 'none');
 
-            const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const canvas = await html2canvas(element, {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#f8fafc',
+              logging: false
+            });
+
             buttons.forEach(b => b.style.display = '');
 
             const imgData = canvas.toDataURL('image/png', 1.0);
-            const imgWidth = 190;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const marginX = 10;
+            const marginY = 12;
+            const maxImgWidth = pageWidth - marginX * 2;
+            const maxImgHeight = pageHeight - marginY * 2;
+
+            let renderWidth = maxImgWidth;
+            let renderHeight = (canvas.height * renderWidth) / canvas.width;
+
+            // 若圖片高度超過單頁上限，等比例縮放避免變形或被裁切
+            if (renderHeight > maxImgHeight) {
+              renderHeight = maxImgHeight;
+              renderWidth = (canvas.width * renderHeight) / canvas.height;
+            }
+
+            const offsetX = (pageWidth - renderWidth) / 2;
 
             if (addedPages > 0) pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 10, 15, imgWidth, Math.min(imgHeight, 270));
+            pdf.addImage(imgData, 'PNG', offsetX, marginY, renderWidth, renderHeight);
             addedPages++;
           }
         }
@@ -729,11 +776,16 @@
         if (addedPages > 0) {
           pdf.save(`MFG_All_Charts_Report_${new Date().toISOString().slice(0,10)}.pdf`);
         } else {
-          alert('沒有找到可匯出的圖表區域！');
+          alert('沒有找到可匯出的圖表或分析卡片區域！');
         }
       } catch (err) {
         console.error(err);
         alert('匯出 PDF 失敗：' + err.message);
+      } finally {
+        if (pdfBtn) {
+          pdfBtn.disabled = false;
+          pdfBtn.innerHTML = originalBtnHtml;
+        }
       }
     };
 
@@ -1071,14 +1123,18 @@
 
       return `
         <div style="margin-bottom: 24px;">
-          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別與合計產值狀況 (NT$)</div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            ${valueCardsHtml}
+          <div id="export-area-s1_value_cards" style="padding: 8px; border-radius: 8px; margin-bottom: 16px;">
+            <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別與合計產值狀況 (NT$)</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+              ${valueCardsHtml}
+            </div>
           </div>
           
-          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別與合計生產數量 (PCS)</div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            ${qtyCardsHtml}
+          <div id="export-area-s1_qty_cards" style="padding: 8px; border-radius: 8px; margin-bottom: 16px;">
+            <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別與合計生產數量 (PCS)</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+              ${qtyCardsHtml}
+            </div>
           </div>
         </div>
       `;
@@ -1134,7 +1190,7 @@
       };
 
       return `
-        <div style="margin-bottom: 30px;">
+        <div id="export-area-s2_strong_weak" style="margin-bottom: 30px; padding: 8px; border-radius: 8px;">
           <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;"><i class="fa-solid fa-gauge-high"></i> 量能強勁與疲軟類別專屬分析卡片 (${prevMonthCol.title} ➔ ${currMonthCol.title})</div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
             
