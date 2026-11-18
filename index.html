@@ -312,7 +312,6 @@
       { id: "s1_chart_4", title: "📊 加班費/產值 分析圖", type: "line", dataKey: "加班費/產值" }
     ];
 
-    // 【強固版日期解析器】全面支援 mmm-yy (如 Jan-26)、YYYYMM、標準日期字串
     window.parseDateKey = function(strOrDate) {
       if (!strOrDate) return 0;
       if (strOrDate instanceof Date) return strOrDate.getTime();
@@ -324,7 +323,6 @@
         return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
       }
       
-      // 支援 "Jan-26", "Jan-2023"
       const matchJan = s.match(/([A-Za-z]{3})[/-](\d{2,4})/);
       if (matchJan) {
         const months = {Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11};
@@ -333,7 +331,6 @@
         return new Date(yr, months[matchJan[1]] !== undefined ? months[matchJan[1]] : 0, 1).getTime();
       }
       
-      // 支援 "202601", "2023-01"
       const matchStd = s.match(/(\d{4})[/-]?(\d{1,2})/);
       if (matchStd) {
         return new Date(parseInt(matchStd[1], 10), parseInt(matchStd[2], 10) - 1, 1).getTime();
@@ -439,7 +436,6 @@
               cols = cols.filter((_, idx) => idx !== totalIndex);
             }
 
-            // 強制依真實時間嚴格遞增排序欄位
             cols.sort((a, b) => {
               const tA = String(a.title || '').trim();
               const tB = String(b.title || '').trim();
@@ -524,7 +520,6 @@
       }
     });
 
-    // 匯出 Excel 並強制設定日期格式為 mmm-yy
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
@@ -679,7 +674,7 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 【修正版】一鍵匯出第一頁與第二頁所有分析卡片與圖表 PDF
+    // 【高度集中化版本】將相關區塊合併群組，減少 PDF 頁數並使排版緊湊
     window.exportAllChartsToPDF = async function() {
       const pdfBtn = document.getElementById('btn-export-pdf');
       const originalBtnHtml = pdfBtn ? pdfBtn.innerHTML : '';
@@ -690,23 +685,22 @@
         }
         if (pdfBtn) {
           pdfBtn.disabled = true;
-          pdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在匯出 PDF...';
+          pdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在匯出集中化 PDF...';
         }
 
         const { jsPDF } = window.jspdf || jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const originalActiveId = window.activeSheetId;
 
-        // 動態尋找第一頁（產能量能分析）與第二頁（各客戶累積產值）的工作表
         const sheet1 = window.sheets.find(s => s.id === 's1' || s.name.includes('產能量能分析')) || window.sheets[0];
         const sheet2 = window.sheets.find(s => s.id === 's2' || s.name.includes('各客戶累積產值') || (s.columns || []).some(c => c.title.includes('客戶'))) || window.sheets[1];
 
+        // 將相關內容集中組合成大群組，減少分散頁數
         const exportTaskConfigs = [];
 
         if (sheet1) {
           exportTaskConfigs.push(
-            { sheetId: sheet1.id, areaId: 'export-area-s1_value_cards', title: '各類別與合計產值狀況 (NT$)' },
-            { sheetId: sheet1.id, areaId: 'export-area-s1_qty_cards', title: '各類別與合計生產數量 (PCS)' },
+            { sheetId: sheet1.id, areaId: 'export-area-s1_cards_group', title: '產值與數量狀況分析摘要' },
             { sheetId: sheet1.id, areaId: 'export-area-s1_chart_1', title: '合計產出市值 / 產出數量趨勢圖' },
             { sheetId: sheet1.id, areaId: 'export-area-s1_chart_2', title: '報廢 / 產值 分析圖' },
             { sheetId: sheet1.id, areaId: 'export-area-s1_chart_3', title: '刀具費 / 產值 分析圖' },
@@ -718,7 +712,7 @@
           exportTaskConfigs.push(
             { sheetId: sheet2.id, areaId: 'export-area-s2_strong_weak', title: '量能強勁與疲軟類別專屬分析卡片' },
             { sheetId: sheet2.id, areaId: 'export-area-s2_treemap', title: '各客戶累積產值佔比 (Treemap)' },
-            { sheetId: sheet2.id, areaId: 'export-area-s2_analysis', title: '客戶產值變化分析' }
+            { sheetId: sheet2.id, areaId: 'export-area-s2_analysis_group', title: '客戶產值變化與趨勢分析' }
           );
         }
 
@@ -726,7 +720,6 @@
         for (const task of exportTaskConfigs) {
           if (window.activeSheetId !== task.sheetId) {
             window.switchTab(task.sheetId);
-            // 等待 DOM 與 Chart.js 動畫完成渲染
             await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 600)));
           }
 
@@ -738,7 +731,7 @@
             const canvas = await html2canvas(element, {
               scale: 2,
               useCORS: true,
-              backgroundColor: '#f8fafc',
+              backgroundColor: '#ffffff',
               logging: false
             });
 
@@ -747,15 +740,14 @@
             const imgData = canvas.toDataURL('image/png', 1.0);
             const pageWidth = 210;
             const pageHeight = 297;
-            const marginX = 10;
-            const marginY = 12;
+            const marginX = 8;
+            const marginY = 10;
             const maxImgWidth = pageWidth - marginX * 2;
             const maxImgHeight = pageHeight - marginY * 2;
 
             let renderWidth = maxImgWidth;
             let renderHeight = (canvas.height * renderWidth) / canvas.width;
 
-            // 若圖片高度超過單頁上限，等比例縮放避免變形或被裁切
             if (renderHeight > maxImgHeight) {
               renderHeight = maxImgHeight;
               renderWidth = (canvas.width * renderHeight) / canvas.height;
@@ -774,7 +766,7 @@
         }
 
         if (addedPages > 0) {
-          pdf.save(`MFG_All_Charts_Report_${new Date().toISOString().slice(0,10)}.pdf`);
+          pdf.save(`MFG_Concentrated_Report_${new Date().toISOString().slice(0,10)}.pdf`);
         } else {
           alert('沒有找到可匯出的圖表或分析卡片區域！');
         }
@@ -1022,10 +1014,10 @@
           </div>
 
           <div class="charts-section-title" style="margin-top: 30px;"><i class="fa-solid fa-scale-balanced"></i> 客戶產值變化分析</div>
-          <div class="chart-page" id="export-area-s2_analysis" style="max-width: 100%; margin-bottom: 30px;">
+          <div class="chart-page" id="export-area-s2_analysis_group" style="max-width: 100%; margin-bottom: 30px;">
             <div class="chart-header">
               <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> A/B 產能增減趨勢篩選 (自動取時間序列最後一個月當作當月、倒數第二個月當作前月)</div>
-              <button class="btn btn-success" onclick="exportChartToPNG('s2_analysis', '客戶產值變化分析')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
+              <button class="btn btn-success" onclick="exportChartToPNG('s2_analysis_group', '客戶產值變化分析')"><i class="fa-solid fa-download"></i> 匯出 PNG</button>
             </div>
             <div id="customer-change-analysis-container" style="width: 100%;"></div>
           </div>
@@ -1121,18 +1113,19 @@
         `;
       });
 
+      // 將第一頁的產值與數量卡片包裝在同一個群組 ID 內，匯出時會合併為同一頁
       return `
-        <div style="margin-bottom: 24px;">
-          <div id="export-area-s1_value_cards" style="padding: 8px; border-radius: 8px; margin-bottom: 16px;">
+        <div id="export-area-s1_cards_group" style="margin-bottom: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <div style="margin-bottom: 16px;">
             <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-chart-pie" style="color: #2563eb;"></i> 各類別與合計產值狀況 (NT$)</div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
               ${valueCardsHtml}
             </div>
           </div>
           
-          <div id="export-area-s1_qty_cards" style="padding: 8px; border-radius: 8px; margin-bottom: 16px;">
+          <div>
             <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i class="fa-solid fa-cubes" style="color: #10b981;"></i> 各類別與合計生產數量 (PCS)</div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
               ${qtyCardsHtml}
             </div>
           </div>
@@ -1173,13 +1166,13 @@
       weakList.sort((a, b) => b.diff - a.diff);
 
       const renderListItems = (list, isStrong) => {
-        if (list.length === 0) return '<div style="color: #94a3b8; font-size: 13px; padding: 12px 0;">目前無符合條件之類別</div>';
-        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        if (list.length === 0) return '<div style="color: #94a3b8; font-size: 13px; padding: 8px 0;">目前無符合條件之類別</div>';
+        let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
         list.forEach(item => {
           const color = isStrong ? '#059669' : '#dc2626';
           const sign = isStrong ? '+' : '';
           html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
               <span style="font-weight: 600; color: #1e293b; font-size: 13px;">${item.name}</span>
               <span style="font-weight: 700; color: ${color}; font-size: 13px;">${sign}${item.diff.toLocaleString()} NT$</span>
             </div>
@@ -1190,23 +1183,23 @@
       };
 
       return `
-        <div id="export-area-s2_strong_weak" style="margin-bottom: 30px; padding: 8px; border-radius: 8px;">
+        <div id="export-area-s2_strong_weak" style="margin-bottom: 30px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
           <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;"><i class="fa-solid fa-gauge-high"></i> 量能強勁與疲軟類別專屬分析卡片 (${prevMonthCol.title} ➔ ${currMonthCol.title})</div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
             
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 15px; font-weight: 700; color: #059669; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-arrow-trend-up"></i> 量能強勁類別 (&gt; +1,000,000)
               </div>
-              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">當月 (${currMonthCol.title}) 減去前月 (${prevMonthCol.title}) 增加超過 100 萬之客戶</div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">當月 (${currMonthCol.title}) 減去前月 (${prevMonthCol.title}) 增加超過 100 萬之客戶</div>
               ${renderListItems(strongList, true)}
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 15px; font-weight: 700; color: #dc2626; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-arrow-trend-down"></i> 量能疲軟類別 (&lt; -1,000,000)
               </div>
-              <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">當月 (${currMonthCol.title}) 減去前月 (${prevMonthCol.title}) 減少超過 100 萬之客戶</div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">當月 (${currMonthCol.title}) 減去前月 (${prevMonthCol.title}) 減少超過 100 萬之客戶</div>
               ${renderListItems(weakList, false)}
             </div>
 
@@ -1354,7 +1347,6 @@
       container.innerHTML = html;
     }
 
-    // 跨年月份（1 月份）黑色垂直分隔線 Plugin
     const yearSeparatorPlugin = {
       id: 'yearSeparatorPlugin',
       afterDraw(chart) {
