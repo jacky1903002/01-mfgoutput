@@ -520,25 +520,37 @@
       }
     });
 
+    // 【修正版】匯出 Excel：確保各分頁資料列正確保留原始數值，不被誤轉成日期 (Jan-70)
     window.exportAllSheetsToExcel = function() {
       try {
         if (typeof XLSX === 'undefined') return alert('SheetJS 尚未載入完成！');
         const wb = XLSX.utils.book_new();
 
+        const toExcelCellValue = (val, isLabelCol) => {
+          if (val === undefined || val === null || val === '') return '';
+          if (isLabelCol) return String(val);
+          const str = String(val).trim();
+          if (str === '-' || str.includes('%')) return str;
+          const cleaned = str.replace(/,/g, '');
+          if (/^-?\d+(\.\d+)?$/.test(cleaned)) {
+            return Number(cleaned);
+          }
+          return val;
+        };
+
         window.sheets.forEach(sheet => {
-          let cols = sheet.columns || [];
-          cols = cols.filter(c => !String(c.title).toUpperCase().includes('EMPTY'));
+          let cols = (sheet.columns || []).filter(c => !String(c.title).toUpperCase().includes('EMPTY'));
 
           const isFirstSheet = (sheet.id === "s1" || sheet.name.includes("產能量能分析"));
           const isSecondSheet = (sheet.id === "s2" || sheet.name.includes("各客戶累積產值"));
 
           let exportRowsData = JSON.parse(JSON.stringify(sheet.data || []));
-          let itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
-          let custColKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
+          const itemColKey = cols.find(c => c.key === 'item' || c.title === '項目')?.key || 'item';
+          const custColKey = cols.find(c => c.title.includes('客戶'))?.key || 'customer';
 
           if (isFirstSheet) {
             exportRowsData = fixedItemNames1.map((name, idx) => {
-              let row = exportRowsData[idx] || {};
+              const row = exportRowsData[idx] || {};
               row[itemColKey] = name;
               cols.forEach(c => {
                 if (c.key !== itemColKey && row[c.key] === undefined) row[c.key] = "0";
@@ -547,7 +559,7 @@
             });
           } else if (isSecondSheet) {
             exportRowsData = fixedCustomerNames2.map((cust, idx) => {
-              let row = exportRowsData[idx] || {};
+              const row = exportRowsData[idx] || {};
               row[custColKey] = cust;
               cols.forEach(c => {
                 if (c.key !== custColKey && row[c.key] === undefined) row[c.key] = "0";
@@ -556,50 +568,17 @@
             });
           }
 
-          let processedCols = cols;
-          if (isFirstSheet || isSecondSheet) {
-            processedCols = cols.map(c => {
-              const dTime = window.parseDateKey(c.title);
-              if (dTime > 0) {
-                const d = new Date(dTime);
-                return { ...c, _dateObj: d };
-              }
-              return c;
-            });
-          }
-
-          const headers = processedCols.map(c => c.title);
+          const headers = cols.map(c => c.title);
           const rowsData = exportRowsData.map(row => {
             const obj = {};
-            processedCols.forEach(c => {
-              if ((isFirstSheet || isSecondSheet) && c._dateObj && !c.title.includes('項目') && !c.title.includes('客戶') && !c.title.includes('總計')) {
-                obj[c.title] = c._dateObj;
-              } else {
-                obj[c.title] = row[c.key] !== undefined ? row[c.key] : '';
-              }
+            cols.forEach(c => {
+              const isLabelCol = c.title.includes('項目') || c.title.includes('客戶');
+              obj[c.title] = toExcelCellValue(row[c.key], isLabelCol);
             });
             return obj;
           });
 
           const ws = XLSX.utils.json_to_sheet(rowsData, { header: headers });
-
-          if (isFirstSheet || isSecondSheet) {
-            const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
-            for (let C = range.s.c; C <= range.e.c; ++C) {
-              const colDef = processedCols[C];
-              if (colDef && colDef._dateObj) {
-                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                  const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-                  const cell = ws[cellAddress];
-                  if (cell) {
-                    cell.t = 'd';
-                    cell.z = 'mmm-yy';
-                  }
-                }
-              }
-            }
-          }
-
           XLSX.utils.book_append_sheet(wb, ws, sheet.name);
         });
 
@@ -695,7 +674,6 @@
         const sheet1 = window.sheets.find(s => s.id === 's1' || s.name.includes('產能量能分析')) || window.sheets[0];
         const sheet2 = window.sheets.find(s => s.id === 's2' || s.name.includes('各客戶累積產值') || (s.columns || []).some(c => c.title.includes('客戶'))) || window.sheets[1];
 
-        // 將相關內容集中組合成大群組，減少分散頁數
         const exportTaskConfigs = [];
 
         if (sheet1) {
@@ -1113,7 +1091,6 @@
         `;
       });
 
-      // 將第一頁的產值與數量卡片包裝在同一個群組 ID 內，匯出時會合併為同一頁
       return `
         <div id="export-area-s1_cards_group" style="margin-bottom: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
           <div style="margin-bottom: 16px;">
